@@ -3,7 +3,7 @@ name = "2026-1-fse-controledecruzamentos"
 version = "0.1.0"
 description = "Trabalho 1 de Fundamentos de Sistemas Embarcados "
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "rpi-gpio>=0.7.1",
 ]

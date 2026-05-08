@@ -5,8 +5,6 @@ except RuntimeError:
 
 class GPIOController:
     def __init__(self):
-        GPIO.setwarnings(False) 
-        GPIO.cleanup()
         GPIO.setmode(GPIO.BCM)
 
     def setup_output(self, pin):
