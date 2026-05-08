@@ -9,6 +9,13 @@ class GPIOController:
 
     def setup_output(self, pin):
         GPIO.setup(pin, GPIO.OUT)
+    
+    def setup_input(self, pin):
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+
+    def output(self, pin, onoff):
+        GPIO.output(pin, onoff)
 
     def turn_on(self, pin):
         GPIO.output(pin, True)
