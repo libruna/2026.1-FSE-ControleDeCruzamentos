@@ -91,21 +91,21 @@ GPIO.add_event_detect(
     CRUZAMENTO_1,
     GPIO.FALLING,
     callback=queue_pedestrian_m1,
-    bouncetime=200,
+    bouncetime=200
 )
 
 GPIO.add_event_detect(
     CRUZAMENTO_2,
     GPIO.FALLING,
     callback=queue_pedestrian_cruzamento,
-    bouncetime=200,
+    bouncetime=200
 )
 
 GPIO.add_event_detect(
     PRINCIPAL_2,
     GPIO.FALLING,
     callback=queue_pedestrian_principal,
-    bouncetime=200,
+    bouncetime=200
 )
 
 time = 0
