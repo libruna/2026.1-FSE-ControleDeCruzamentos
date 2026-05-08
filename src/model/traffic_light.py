@@ -11,10 +11,6 @@ class TrafficLight:
         self.yellow_mintime = min_yellow
         self.red_mintime = min_red
 
-        self.gpio.setup_output(green)
-        self.gpio.setup_output(yellow)
-        self.gpio.setup_output(red)
-
         self.waiting = False
 
     def _change_state(self, time, state):
@@ -30,7 +26,7 @@ class TrafficLight:
          and (state_duration >= self.green_maxtime \
          or (state_duration >= self.green_mintime and waiting)):
             self._change_state(time, 'yellow')
-            
+
         elif self.state == 'yellow' and state_duration >= self.yellow_mintime:
             self._change_state(time, 'red')
 
