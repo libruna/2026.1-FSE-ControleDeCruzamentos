@@ -29,51 +29,51 @@ principal = TrafficLight(
     2
 )
 
-gpio.setup_input(CRUZAMENTO_1)
-gpio.setup_input(PRINCIPAL_1)
-gpio.setup_input(CRUZAMENTO_2)
-gpio.setup_input(PRINCIPAL_2)
+gpio.setup_input(pins.CRUZAMENTO_1)
+gpio.setup_input(pins.PRINCIPAL_1)
+gpio.setup_input(pins.CRUZAMENTO_2)
+gpio.setup_input(pins.PRINCIPAL_2)
 
-gpio.setup_output(RED_LED)
-gpio.setup_output(GREEN_LED)
-gpio.setup_output(YELLOW_LED)
+gpio.setup_output(pins.RED_LED)
+gpio.setup_output(pins.GREEN_LED)
+gpio.setup_output(pins.YELLOW_LED)
 
-gpio.setup_output(BIT_0)
-gpio.setup_output(BIT_1)
-gpio.setup_output(BIT_2)
+gpio.setup_output(pins.BIT_0)
+gpio.setup_output(pins.BIT_1)
+gpio.setup_output(pins.BIT_2)
 
 
 def output_m1(estado_semaforo):
-    gpio.output(RED_LED, estado_semaforo == 'red')
-    gpio.output(YELLOW_LED, estado_semaforo == 'yellow')
-    gpio.output(GREEN_LED, estado_semaforo == 'green')
+    gpio.output(pins.RED_LED, estado_semaforo == 'red')
+    gpio.output(pins.YELLOW_LED, estado_semaforo == 'yellow')
+    gpio.output(pins.GREEN_LED, estado_semaforo == 'green')
 
 def output_m2(estado_principal, estado_cruzamento):
 
     if estado_principal == 'green' and estado_cruzamento == 'red': # Estado 1
-        gpio.output(BIT_0, True)
-        gpio.output(BIT_1, False)
-        gpio.output(BIT_2, False)
+        gpio.output(pins.BIT_0, True)
+        gpio.output(pins.BIT_1, False)
+        gpio.output(pins.BIT_2, False)
     
     elif estado_principal == 'yellow' and estado_cruzamento == 'red': # Estado 2
-        gpio.output(BIT_0, False)
-        gpio.output(BIT_1, True)
-        gpio.output(BIT_2, False)
+        gpio.output(pins.BIT_0, False)
+        gpio.output(pins.BIT_1, True)
+        gpio.output(pins.BIT_2, False)
 
     elif estado_principal == estado_cruzamento == 'red': # Estado 4
-        gpio.output(BIT_0, False)
-        gpio.output(BIT_1, False)
-        gpio.output(BIT_2, True)
+        gpio.output(pins.BIT_0, False)
+        gpio.output(pins.BIT_1, False)
+        gpio.output(pins.BIT_2, True)
     
     elif estado_principal == 'red' and estado_cruzamento == 'green': # Estado 5
-        gpio.output(BIT_0, True)
-        gpio.output(BIT_1, False)
-        gpio.output(BIT_2, True)
+        gpio.output(pins.BIT_0, True)
+        gpio.output(pins.BIT_1, False)
+        gpio.output(pins.BIT_2, True)
     
     elif estado_principal == 'red' and estado_cruzamento == 'yellow': # Estado 6
-        gpio.output(BIT_0, False)
-        gpio.output(BIT_1, True)
-        gpio.output(BIT_2, True)
+        gpio.output(pins.BIT_0, False)
+        gpio.output(pins.BIT_1, True)
+        gpio.output(pins.BIT_2, True)
     
     else:
         print('ESTADO INVALIDO')
@@ -87,25 +87,19 @@ def queue_pedestrian_cruzamento(canal):
 def queue_pedestrian_principal(canal):
     principal.queue_pedestrian()
 
-GPIO.add_event_detect(
-    CRUZAMENTO_1,
-    GPIO.FALLING,
-    callback=queue_pedestrian_m1,
-    bouncetime=200
+gpio.add_event_detect(
+    pins.CRUZAMENTO_1,
+    callback=queue_pedestrian_m1
 )
 
-GPIO.add_event_detect(
-    CRUZAMENTO_2,
-    GPIO.FALLING,
-    callback=queue_pedestrian_cruzamento,
-    bouncetime=200
+gpio.add_event_detect(
+    pins.CRUZAMENTO_2,
+    callback=queue_pedestrian_cruzamento
 )
 
-GPIO.add_event_detect(
-    PRINCIPAL_2,
-    GPIO.FALLING,
-    callback=queue_pedestrian_principal,
-    bouncetime=200
+gpio.add_event_detect(
+    pins.PRINCIPAL_2,
+    callback=queue_pedestrian_principal
 )
 
 time = 0

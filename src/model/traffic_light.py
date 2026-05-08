@@ -24,7 +24,7 @@ class TrafficLight:
 
         if self.state == 'green' \
          and (state_duration >= self.green_maxtime \
-         or (state_duration >= self.green_mintime and waiting)):
+         or (state_duration >= self.green_mintime and self.waiting)):
             self._change_state(time, 'yellow')
 
         elif self.state == 'yellow' and state_duration >= self.yellow_mintime:
