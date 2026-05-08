@@ -10,7 +10,7 @@ tres_leds = TrafficLight(
     5,
     10,
     2,
-    2
+    10
 )
 
 cruzamento = TrafficLight(
@@ -112,13 +112,13 @@ time = 0
 
 try:
     while True:
-        tres_leds.execute(time, queue_pedestrian=False)
+        tres_leds.execute(time, False)
         output_m1(tres_leds.state)
 
         print(tres_leds.state.capitalize())
 
-        cruzamento.execute(time, principal.state == 'green')
-        principal.execute(time, cruzamento.state == 'green')
+        cruzamento.execute(time, principal.state != 'red')
+        principal.execute(time, cruzamento.state != 'red')
 
         output_m2(principal.state, cruzamento.state)
 
