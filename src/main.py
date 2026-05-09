@@ -6,6 +6,7 @@ from time import sleep
 gpio = GPIOController()
 
 tres_leds = TrafficLight(
+    'modelo 1',
     'red',
     5,
     10,
@@ -14,6 +15,7 @@ tres_leds = TrafficLight(
 )
 
 cruzamento = TrafficLight(
+    'cruzamento',
     'red',
     5,
     10,
@@ -22,6 +24,7 @@ cruzamento = TrafficLight(
 )
 
 principal = TrafficLight(
+    'principal',
     'green',
     10,
     20,
@@ -108,8 +111,6 @@ try:
     while True:
         tres_leds.execute(time, False)
         output_m1(tres_leds.state)
-
-        print(tres_leds.state.capitalize())
 
         cruzamento.execute(time, principal.state != 'red')
         principal.execute(time, cruzamento.state != 'red')

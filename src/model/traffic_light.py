@@ -2,7 +2,8 @@ import time
 
 class TrafficLight:
 
-    def __init__(self, initial_state, min_green, max_green, min_yellow, min_red):
+    def __init__(self, name, initial_state, min_green, max_green, min_yellow, min_red):
+        self.name = name
         self.state = initial_state
 
         self.state_start_time = 0
@@ -22,10 +23,12 @@ class TrafficLight:
 
         state_duration = time - self.state_start_time
 
-        if self.state == 'green' \
-         and (state_duration >= self.green_maxtime \
-         or (state_duration >= self.green_mintime and self.waiting)):
-            self._change_state(time, 'yellow')
+        if self.state == 'green':
+            if state_duration >= self.green_maxtime:
+                self._change_state(time, 'yellow')
+            elif state_duration >= self.green_mintime and self.waiting:
+                self._change_state(time, 'yellow')
+                print(f'travessia antecipada em {self.name}({state_duration:.2f}s)')
 
         elif self.state == 'yellow' and state_duration >= self.yellow_mintime:
             self._change_state(time, 'red')
@@ -35,3 +38,4 @@ class TrafficLight:
 
     def queue_pedestrian(self):
         self.waiting = True
+        print(f'travessia requisitada em {self.name}')
