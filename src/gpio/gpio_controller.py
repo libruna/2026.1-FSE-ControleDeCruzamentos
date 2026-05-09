@@ -9,6 +9,16 @@ class GPIOController:
 
     def setup_output(self, pin):
         GPIO.setup(pin, GPIO.OUT)
+    
+    def setup_input(self, pin):
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+    def add_event_detect(self, pin, callback):
+        print(f'{pin=} {callback=}')
+        GPIO.add_event_detect(pin, GPIO.RISING, callback=callback, bouncetime=200)
+
+    def output(self, pin, onoff):
+        GPIO.output(pin, onoff)
 
     def turn_on(self, pin):
         GPIO.output(pin, True)

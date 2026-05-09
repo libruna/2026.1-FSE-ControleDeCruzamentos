@@ -2,43 +2,40 @@ import time
 
 class TrafficLight:
 
-    def __init__(self, gpio, green, yellow, red):
-        self.gpio = gpio
+    def __init__(self, name, initial_state, min_green, max_green, min_yellow, min_red):
+        self.name = name
+        self.state = initial_state
 
-        self.green_pin = green
-        self.yellow_pin = yellow
-        self.red_pin = red
+        self.state_start_time = 0
+        self.green_mintime = min_green
+        self.green_maxtime = max_green
+        self.yellow_mintime = min_yellow
+        self.red_mintime = min_red
 
-        self.gpio.setup_output(green)
-        self.gpio.setup_output(yellow)
-        self.gpio.setup_output(red)
+        self.waiting = False
 
-    def green_state(self):
-        self.gpio.turn_on(self.green_pin)
-        self.gpio.turn_off(self.yellow_pin)
-        self.gpio.turn_off(self.red_pin)
-
-        print("GREEN")
-        time.sleep(10)
-
-    def yellow_state(self):
-        self.gpio.turn_off(self.green_pin)
-        self.gpio.turn_on(self.yellow_pin)
-        self.gpio.turn_off(self.red_pin)
-
-        print("YELLOW")
-        time.sleep(2)
-    
-    def red_state(self):
-        self.gpio.turn_off(self.green_pin)
-        self.gpio.turn_off(self.yellow_pin)
-        self.gpio.turn_on(self.red_pin)
-
-        print("RED")
-        time.sleep(10)
+    def _change_state(self, time, state):
+        self.state = state
+        self.state_start_time = time
+        self.waiting = False
         
-    def execute(self):
-        while True:
-            self.green_state()
-            self.yellow_state()
-            self.red_state()
+    def execute(self, time, block_green = False):
+
+        state_duration = time - self.state_start_time
+
+        if self.state == 'green':
+            if state_duration >= self.green_maxtime:
+                self._change_state(time, 'yellow')
+            elif state_duration >= self.green_mintime and self.waiting:
+                self._change_state(time, 'yellow')
+                print(f'travessia antecipada em {self.name}({state_duration:.2f}s)')
+
+        elif self.state == 'yellow' and state_duration >= self.yellow_mintime:
+            self._change_state(time, 'red')
+
+        elif self.state == 'red' and state_duration >= self.red_mintime and not block_green:
+            self._change_state(time, 'green')
+
+    def queue_pedestrian(self):
+        self.waiting = True
+        print(f'travessia requisitada em {self.name}')
