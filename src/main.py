@@ -17,6 +17,7 @@ def main():
             menu_uart()
 
         elif option == "0":
+            print('Encerrando...')
             break
 
         else:

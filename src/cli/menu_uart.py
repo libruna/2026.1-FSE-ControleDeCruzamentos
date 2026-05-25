@@ -5,7 +5,7 @@ def menu_uart():
         print("\n------- UART -------")
         print("1 - Protocolo Simplificado")
         print("2 - Protocolo MODBUS")
-        print("0 - Voltar")
+        print("0 - Sair")
 
         option = input("Escolha: ")
 
@@ -13,10 +13,10 @@ def menu_uart():
             menu_simple_protocol()
 
         elif option == "2":
-            print("todo")
-            #menu_modbus_protocol()
+            menu_modbus_protocol()
 
         elif option == "0":
+            print('Encerrando...')
             break
 
         else:
@@ -55,6 +55,47 @@ def menu_simple_protocol():
         elif option == '6':
             value = input('Digite uma string: ')
             protocol_simple.send_string(value)
+
+        elif option == '0':
+            print('Encerrando...')
+            break
+
+        else:
+            print('Opção inválida')
+
+def menu_modbus_protocol():
+    while True:
+        print('\n------- Protocolo MODBUS -------')
+        print('1 - Solicitar inteiro')
+        print('2 - Solicitar float')
+        print('3 - Solicitar string')
+        print('4 - Enviar inteiro')
+        print('5 - Enviar float')
+        print('6 - Enviar string')
+        print('0 - Sair')
+
+        option = input('\nEscolha: ')
+
+        if option == '1':
+            protocol_modbus.request_int()
+
+        elif option == '2':
+            protocol_modbus.request_float()
+
+        elif option == '3':
+            protocol_modbus.request_string()
+
+        elif option == '4':
+            value = int(input('Digite um inteiro: '))
+            protocol_modbus.send_int(value)
+
+        elif option == '5':
+            value = float(input('Digite um float: '))
+            protocol_modbus.send_float(value)
+
+        elif option == '6':
+            value = input('Digite uma string: ')
+            protocol_modbus.send_string(value)
 
         elif option == '0':
             print('Encerrando...')

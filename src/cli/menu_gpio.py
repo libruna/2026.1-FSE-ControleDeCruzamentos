@@ -4,7 +4,7 @@ def menu_gpio():
     while True:
         print("\n------- GPIO -------")
         print("1 - Iniciar")
-        print("0 - Voltar")
+        print("0 - Sair")
 
         option = input("\nEscolha: ")
 
@@ -12,4 +12,5 @@ def menu_gpio():
             traffic_light_system()
 
         elif option == "0":
+            print('Encerrando...')
             break

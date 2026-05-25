@@ -1,12 +1,12 @@
 # protocolo simplificado
 
-from constants import MATRICULA
+from constants import *
 from uart_connection import ser
 from parser import *
 
 # OPERAÇÕES
 def request_int() -> bytes:
-    packet = bytes([0xA1]) + MATRICULA
+    packet = REQUEST_INT + MATRICULA
     print(f'Pacote enviado: {packet}')
     
     ser.write(packet)
@@ -22,7 +22,7 @@ def request_int() -> bytes:
     ser.close()
 
 def request_float() -> bytes:
-    packet = bytes([0xA2]) + MATRICULA
+    packet = REQUEST_FLOAT + MATRICULA
     print(f'Pacote enviado: {packet}')
     
     ser.write(packet)
@@ -38,7 +38,7 @@ def request_float() -> bytes:
     ser.close()
 
 def request_string() -> bytes:
-    packet = bytes([0xA3]) + MATRICULA
+    packet = REQUEST_STRING + MATRICULA
     print(f'Pacote enviado: {packet}')
     
     ser.write(packet)
@@ -60,9 +60,9 @@ def request_string() -> bytes:
     ser.close()
                                                                                  
 def send_int(value: int) -> bytes:
-    value_in_bytes = int_to_raw_bytes(value)
+    value_le = int_to_raw_bytes(value)
 
-    packet = bytes([0xB1]) + value_in_bytes + MATRICULA
+    packet = SEND_INT + value_le + MATRICULA
     print(f'Pacote enviado: {packet} -> op: {value} * {raw_bytes_to_int(MATRICULA)}')
 
     ser.write(packet)
@@ -78,9 +78,9 @@ def send_int(value: int) -> bytes:
     ser.close()
 
 def send_float(value: float) -> bytes:
-    value_in_bytes = float_to_raw_bytes(value)
+    value_le = float_to_raw_bytes(value)
 
-    packet = bytes([0xB2]) + value_in_bytes + MATRICULA
+    packet = SEND_FLOAT + value_le + MATRICULA
     print(f'Pacote enviado: {packet} -> op: {value} * {raw_bytes_to_int(MATRICULA)}')
 
     ser.write(packet)
@@ -99,7 +99,7 @@ def send_string(value: str) -> bytes:
     value_in_bytes = string_to_raw_bytes(value)
     size = len(value_in_bytes)
 
-    packet = bytes([0xB3]) + bytes([size]) + value_in_bytes + MATRICULA
+    packet = SEND_STRING + bytes([size]) + value_in_bytes + MATRICULA
     print(f'Pacote enviado: {packet} -> {value} + {raw_bytes_to_int(MATRICULA)}')
 
     ser.write(packet)
@@ -123,7 +123,7 @@ def send_string(value: str) -> bytes:
     ser.close()
 
 def validate_response(response: bytes, expected_size: int) -> bool:
-    if len(response) != expected_size:
+    if len(response) != expected_size: # se entrar no if, ser.read() retornou vazio por timeout
         print(f'ERRO: timeout exception -> esperava {expected_size} recebeu {len(response)}')
         return False
     return True
