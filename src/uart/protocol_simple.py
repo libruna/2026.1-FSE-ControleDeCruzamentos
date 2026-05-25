@@ -1,7 +1,5 @@
 # protocolo simplificado
 
-from urllib import response
-
 from constants import MATRICULA
 from uart_connection import ser
 from parser import *
