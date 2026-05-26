@@ -119,15 +119,11 @@ def send_string(value: str) -> bytes:
     ser.write(packet)
 
     str_size = ser.read(1)
-
     if not validate_response(str_size, 1):
         ser.close()
         return
 
-    print(f'Tamanho da string: {str_size[0]}')
-
     response = ser.read(str_size[0])
-
     if not validate_response(response, str_size[0]):
         ser.close()
         return

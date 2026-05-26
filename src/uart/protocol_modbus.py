@@ -5,12 +5,21 @@
 from .constants import *
 from .uart_connection import open_serial
 from .parser import *
+from .crc16 import calculate_crc
 
 # OPERAÇÕES
 def request_int() -> bytes:
     ser = open_serial()
 
-    packet = ADDRESS + REQUEST_CODE + REQUEST_INT + MATRICULA
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE,
+        REQUEST_INT,
+        MATRICULA,
+    ])
+    
+    packet = payload + calculate_crc(payload)
+
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
@@ -23,7 +32,15 @@ def request_int() -> bytes:
 def request_float() -> bytes:
     ser = open_serial()
 
-    packet = ADDRESS + REQUEST_CODE + REQUEST_FLOAT + MATRICULA
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE,
+        REQUEST_FLOAT,
+        MATRICULA
+    ])
+
+    packet = payload + calculate_crc(payload)
+
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
@@ -36,7 +53,15 @@ def request_float() -> bytes:
 def request_string() -> bytes:
     ser = open_serial()
 
-    packet = ADDRESS + REQUEST_CODE + REQUEST_STRING + MATRICULA
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE, 
+        REQUEST_STRING,
+        MATRICULA
+    ])
+
+    packet = payload + calculate_crc(payload)
+
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
@@ -54,7 +79,16 @@ def send_int(value: int) -> bytes:
 
     value_le = int_to_raw_bytes(value)
 
-    packet = ADDRESS + REQUEST_CODE + SEND_INT + value_le + MATRICULA + int_to_raw_bytes(value)
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE,
+        SEND_INT,
+        value_le,
+        MATRICULA
+    ])
+
+    packet = payload + calculate_crc(payload)
+    
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
@@ -69,7 +103,16 @@ def send_float(value: float) -> bytes:
 
     value_le = float_to_raw_bytes(value)
 
-    packet = ADDRESS + REQUEST_CODE + SEND_FLOAT + value_le + MATRICULA + float_to_raw_bytes(value)
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE,
+        SEND_FLOAT,
+        value_le,
+        MATRICULA
+    ])
+
+    packet = payload + calculate_crc(payload)
+
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
@@ -85,7 +128,17 @@ def send_string(value: str) -> bytes:
     value_in_bytes = string_to_raw_bytes(value)
     str_size = len(value_in_bytes)
 
-    packet = ADDRESS + REQUEST_CODE + SEND_STRING + bytes([str_size]) + value_in_bytes + MATRICULA + bytes([str_size]) + value_in_bytes
+    payload = b"".join([
+        ADDRESS,
+        REQUEST_CODE,
+        SEND_STRING,
+        bytes([str_size]),
+        value_in_bytes,
+        MATRICULA
+    ])
+
+    packet = payload + calculate_crc(payload)
+
     print(f'Pacote enviado: {packet}')
 
     ser.write(packet)
