@@ -1,4 +1,4 @@
-from cli.menu_gpio import gpio_menu
+from cli.menu_gpio import menu_gpio
 from cli.menu_uart import menu_uart
 
 def main():
@@ -11,7 +11,7 @@ def main():
         option = input("\nEscolha: ")
 
         if option == "1":
-            gpio_menu()
+            menu_gpio()
 
         elif option == "2":
             menu_uart()
