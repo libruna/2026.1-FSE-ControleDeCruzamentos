@@ -60,9 +60,7 @@ Figura 1 - Matrícula em destaque no widget do dashboard
 
 <br>
 
-- **Vídeo de demonstração da execução**
-<br>
-[Assistir vídeo de demonstração da entrega 2](./media/demonstracao-entrega2.mp4)
+[**Vídeo de demonstração da execução**](./media/demonstracao-entrega2.mp4)
 
 ## Desenvolvedoras
 <div align="center">
