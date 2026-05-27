@@ -4,6 +4,8 @@ from uart.parser import *
 from uart.uart_connection import connect
 import re
 
+VAR_LENGHT = 0
+
 def menu_uart():
     while True:
         print("\n------- UART -------")
@@ -116,6 +118,9 @@ def menu_modbus_protocol():
             operation = REQUEST_INT
 
             response = _send_protocol_modbus(operation, function)
+
+            if len(response) != 4:
+                print(f'ERRO: timeout exception -> esperava 4 recebeu {len(response)}')
 
             _interpret(operation, response)
 
