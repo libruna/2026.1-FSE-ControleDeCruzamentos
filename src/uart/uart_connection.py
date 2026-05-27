@@ -33,9 +33,9 @@ def connect(send_data : bytes, response_lenght : int, max_retries : int, modbus=
             if(response_lenght <= VAR_LENGHT):
                 response = ser.read(1 if not modbus else len_ind+1)
 
-                response += ser.read(response[len_ind] + 2)
+                response += ser.read(response[len_ind] + (2 if modbus else 0))
             else:
-                response = ser.read(response_lenght + 5)
+                response = ser.read(response_lenght + (5 if modbus else 0))
         except serial.SerialTimeoutException:
             print(f'ERRO: Timeout')
         except serial.SerialException as e:

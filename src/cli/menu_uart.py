@@ -85,6 +85,10 @@ def menu_simple_protocol():
             operation = SEND_STRING
             value = string_to_bytes(input('Digite uma string: '))
 
+            if not value:
+                print('Entrada inválida')
+                continue
+
             response = _send_protocol_simple(operation, value)
 
             _interpret(operation, response)
@@ -163,6 +167,10 @@ def menu_modbus_protocol():
 
             value = string_to_bytes(input('Digite uma string: '))
 
+            if not value:
+                print('Entrada inválida')
+                continue
+
             response = _send_protocol_modbus(operation, function, value)
 
             _interpret(operation, response, True)
@@ -196,10 +204,10 @@ def _send_protocol_simple(operation, value = b'') -> bytes:
         print(f'Pacote enviado: {_strhex(payload)}')
         if(len(value) == 1):
             print(f'                    ^   ^   ^   ^------matrícula-----^')
-        if(len(value) == 2):
+        elif(len(value) == 2):
             print(f'                    ^   ^   ^str-^  ^------matrícula-----^')
         else:
-            print(f'                    ^   ^   ^--{'str':-^{(len(value)-2)*4}}--^  ^------matrícula-----^')
+            print(f'                    ^   ^   ^--{'str'.center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^')
         print(f'                    op len {'str' if len(value) == 1 else '  '}                                                      \n')
         print(f'op = {const_nome(operation)}')
         print(f'len (tamanho) = {len(value)}')
@@ -243,11 +251,11 @@ def _send_protocol_modbus(operation, function, value = b'') -> bytes:
     else:
         print(f'Pacote enviado: {_strhex(payload)}')
         if(len(value) == 1):
-            print(f'                    ^   ^   ^   ^   ^   ^------matrícula-----  ^CRC-^^')
-        if(len(value) == 2):
+            print(f'                    ^   ^   ^   ^   ^   ^------matrícula-----  ^CRC-^')
+        elif(len(value) == 2):
             print(f'                    ^   ^   ^   ^   ^str-^  ^------matrícula-----^  ^CRC-^')
         else:
-            print(f'                    ^   ^   ^   ^   ^--{'str':-^{(len(value)-2)*4}}--^  ^------matrícula-----^  ^CRC-^')
+            print(f'                    ^   ^   ^   ^   ^--{'str'.center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^  ^CRC-^')
         print(f'                   add fun  op len {'str' if len(value) == 1 else '  '}                                                      \n')
         print(f'add (endereço) = {_strhex(ADDRESS)}')
         print(f'fun (função) = {_strhex(function)}')
@@ -268,29 +276,62 @@ def _interpret(operation : bytes, response: bytes, modbus=False):
 
     len_ind = 0 if not modbus else 3
 
-    if modbus:
-        print(f'add (endereço): {response[0]:02x}')
-        print(f'fun (função): {response[1]:02x}')
-        print(f'op = {const_nome(response[2])}')
-
     if operation in (SEND_STRING, REQUEST_STRING):
         lenght = response[len_ind]
         value = bytes_to_string(response[len_ind + 1: len_ind + 1 + lenght])
 
-        print(f'Tamanho: {lenght} — String: {value}')
+        if modbus:
+            if(lenght == 1):
+                print(f'                     ^   ^   ^   ^   ^   ^CRC-^')
+            if(lenght == 2):
+                print(f'                     ^   ^   ^   ^   ^str-^   ^CRC-^')
+            else:
+                print(f'                     ^   ^   ^   ^   ^--{'str'.center((lenght-2) * 4, "-")}--^  ^CRC-^')
+            print(f'                    add fun  op len {'str' if lenght == 1 else '  '}                        \n')
+            _modbus_interpret_header(response)
+        else:
+            if(lenght == 1):
+                print(f'                     ^   ^')
+            if(lenght == 2):
+                print(f'                     ^   ^str-^')
+            else:
+                print(f'                     ^   ^--{'str'.center((lenght-2) * 4, "-")}--^')
+            print(f'                    len {'str' if lenght == 1 else '   '}\n')
+
+
+        print(f'tamanho: {lenght} — string: {value}')
     elif operation in (SEND_FLOAT, REQUEST_FLOAT):
-        value = bytes_to_float(response[len_ind:-2])
+        value = bytes_to_float(response[len_ind: len(response) if not modbus else -2])
 
-        print(f'Float recebido: {value}')
+        if modbus:
+            print(f'                     ^   ^   ^   ^---valor----^  ^CRC-^')
+            print(f'                    add fun  op                        \n')
+            _modbus_interpret_header(response)
+        else:
+            print(f'                     ^---valor----^\n')
+
+        print(f'valor (float): {value}')
     elif operation in (SEND_INT, REQUEST_INT):
-        value = bytes_to_int(response[len_ind:-2])
+        value = bytes_to_int(response[len_ind:len(response) if not modbus else -2])
 
-        print(f'Inteiro recebido: {value}')
+        if modbus:
+            print(f'                     ^   ^   ^   ^---valor----^  ^CRC-^')
+            print(f'                    add fun  op                        \n')
+            _modbus_interpret_header(response)
+        else:
+            print(f'                     ^---valor----^\n')
+
+        print(f'valor (inteiro): {value}')
     else:
-        print('ERRO: Pacote inválido recebido')
+        print('ERRO: pacote inválido recebido')
 
     if modbus:
-        print(f'CRC = {_strhex(response[-2:])}')
+        print(f'crc = {_strhex(response[-2:])}')
+
+def _modbus_interpret_header(response):
+    print(f'add (endereço): b\'\\x{response[0]:02x}\'')
+    print(f'fun (função): b\'\\x{response[1]:02x}\'')
+    print(f'op = {const_nome(bytes(response[2]))}')
 
 def _strhex(s):
     return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
