@@ -53,12 +53,8 @@ O sistema pode ser controlado pelo submenu de comunicação UART, permitindo alt
 
 Cada operação exibe na tela toda a sequência de bytes enviados e recebidos, bem como o respectivo valor decodificado. Além disso, as respostas das operações também podem ser observadas pelo Dashboard (conforme a [Figura 1](https://gitlab.com/fse_fga/trabalhos-2026_1/trabalho-1-2026-1/-/blob/main/Entrega_2.md) do enunciado do trabalho - Entrega 2).
 
-- **Dashboard UART**
-<br>
 ![matrícula em destaque no widget](./media/dashboard-uart.png)
 Figura 1 - Matrícula em destaque no widget do dashboard
-
-<br>
 
 [**Vídeo de demonstração da execução**](./media/demonstracao-entrega2.mp4)
 
