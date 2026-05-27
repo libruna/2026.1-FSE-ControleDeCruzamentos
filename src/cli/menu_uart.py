@@ -1,7 +1,7 @@
 from uart import protocol_simple, protocol_modbus
 from uart.constants import *
 from uart.parser import *
-from uart.uart_connection import *
+from uart.uart_connection import connect
 import re
 
 def menu_uart():
