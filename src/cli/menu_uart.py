@@ -329,9 +329,9 @@ def _interpret(operation : bytes, response: bytes, modbus=False):
         print(f'crc = {_strhex(response[-2:])}')
 
 def _modbus_interpret_header(response):
-    print(f'add (endereço): b\'\\x{response[0]:02x}\'')
-    print(f'fun (função): b\'\\x{response[1]:02x}\'')
-    print(f'op = {const_nome(bytes(response[2]))}')
+    print(f'add (endereço): {_strhex(response[0:1])}')
+    print(f'fun (função): {_strhex(response[1:2])}')
+    print(f'op = {const_nome(_strhex(response[2:3]))}')
 
 def _strhex(s):
     return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
