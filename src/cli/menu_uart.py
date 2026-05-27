@@ -1,3 +1,5 @@
+from urllib import response
+
 from uart import protocol_simple, protocol_modbus
 from uart.constants import *
 from uart.parser import *
@@ -121,25 +123,31 @@ def menu_modbus_protocol():
             function = REQUEST_CODE
             operation = REQUEST_INT
 
-            response = _send_protocol_modbus(operation, function)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '2':
             function = REQUEST_CODE
             operation = REQUEST_FLOAT
 
-            response = _send_protocol_modbus(operation, function)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '3':
             function = REQUEST_CODE
             operation = REQUEST_STRING
 
-            response = _send_protocol_modbus(operation, function)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '4':
             function = SEND_CODE
@@ -147,9 +155,11 @@ def menu_modbus_protocol():
 
             value = int_to_bytes(int(input('Digite um inteiro: ')))
 
-            response = _send_protocol_modbus(operation, function, value)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '5':
             function = SEND_CODE
@@ -157,9 +167,11 @@ def menu_modbus_protocol():
 
             value = float_to_bytes(float(input('Digite um float: ')))
 
-            response = _send_protocol_modbus(operation, function, value)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '6':
             function = SEND_CODE
@@ -171,9 +183,11 @@ def menu_modbus_protocol():
                 print('Entrada inválida')
                 continue
 
-            response = _send_protocol_modbus(operation, function, value)
-
-            _interpret(operation, response, True)
+            try:
+                response = _send_protocol_modbus(operation, function, value)
+                _interpret(operation, response, True)
+            except Exception as e:
+                print(e)
 
         elif option == '0':
             print('Encerrando...')
@@ -207,8 +221,8 @@ def _send_protocol_simple(operation, value = b'') -> bytes:
         elif(len(value) == 2):
             print(f'                    ^   ^   ^str-^  ^------matrícula-----^')
         else:
-            print(f'                    ^   ^   ^--{'str'.center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^')
-        print(f'                    op len {'str' if len(value) == 1 else '  '}                                                      \n')
+            print(f'                    ^   ^   ^--{"str".center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^')
+        print(f'                    op len {"str" if len(value) == 1 else "   "}                                                   \n')
         print(f'op = {const_nome(operation)}')
         print(f'len (tamanho) = {len(value)}')
         print(f'str = {bytes_to_string(value)}')
@@ -219,8 +233,6 @@ def _send_protocol_simple(operation, value = b'') -> bytes:
     response_lenght = VAR_LENGHT if operation in (SEND_STRING, REQUEST_STRING) else 4
 
     return connect(payload, response_lenght, 5)
-
-
 
 def _send_protocol_modbus(operation, function, value = b'') -> bytes:
     payload = protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)
@@ -255,8 +267,8 @@ def _send_protocol_modbus(operation, function, value = b'') -> bytes:
         elif(len(value) == 2):
             print(f'                    ^   ^   ^   ^   ^str-^  ^------matrícula-----^  ^CRC-^')
         else:
-            print(f'                    ^   ^   ^   ^   ^--{'str'.center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^  ^CRC-^')
-        print(f'                   add fun  op len {'str' if len(value) == 1 else '  '}                                                      \n')
+            print(f'                    ^   ^   ^   ^   ^--{"str".center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^  ^CRC-^')
+        print(f'                   add fun  op len {"str" if len(value) == 1 else "   "}                                                      \n')
         print(f'add (endereço) = {_strhex(ADDRESS)}')
         print(f'fun (função) = {_strhex(function)}')
         print(f'op = {const_nome(operation)}')
@@ -286,8 +298,8 @@ def _interpret(operation : bytes, response: bytes, modbus=False):
             if(lenght == 2):
                 print(f'                     ^   ^   ^   ^   ^str-^   ^CRC-^')
             else:
-                print(f'                     ^   ^   ^   ^   ^--{'str'.center((lenght-2) * 4, "-")}--^  ^CRC-^')
-            print(f'                    add fun  op len {'str' if lenght == 1 else '  '}                        \n')
+                print(f'                     ^   ^   ^   ^   ^--{"str".center((lenght-2) * 4, "-")}--^  ^CRC-^')
+            print(f'                    add fun  op len {"str" if lenght == 1 else "   "}                        \n')
             _modbus_interpret_header(response)
         else:
             if(lenght == 1):
@@ -295,8 +307,8 @@ def _interpret(operation : bytes, response: bytes, modbus=False):
             if(lenght == 2):
                 print(f'                     ^   ^str-^')
             else:
-                print(f'                     ^   ^--{'str'.center((lenght-2) * 4, "-")}--^')
-            print(f'                    len {'str' if lenght == 1 else '   '}\n')
+                print(f'                     ^   ^--{"str".center((lenght-2) * 4, "-")}--^')
+            print(f'                    len {"str" if lenght == 1 else "   "}\n')
 
 
         print(f'tamanho: {lenght} — string: {value}')

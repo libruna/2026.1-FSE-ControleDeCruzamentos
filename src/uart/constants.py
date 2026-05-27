@@ -1,4 +1,4 @@
-MATRICULA = bytes([6, 5, 4, 3, 2, 2])
+MATRICULA = bytes([0, 2, 9, 5, 1, 2])
 
 REQUEST_INT = b'\xa1'
 REQUEST_FLOAT = b'\xa2'
@@ -12,6 +12,19 @@ ADDRESS = b'\x01'
 
 REQUEST_CODE = b'\x23'
 SEND_CODE = b'\x16'
+
+MODBUS_ERRORS = { # https://docs.aveva.com/bundle/sp-cdp-drivers/page/192126.html
+    0x01: 'ILLEGAL FUNCTION',
+    0x02: 'ILLEGAL DATA ADDRESS',
+    0x03: 'ILLEGAL DATA VALUE',
+    0x04: 'ILLEGAL RESPONSE LENGTH',
+    0x05: 'ACKNOWLEDGE',
+    0x06: 'SLAVE DEVICE BUSY',
+    0x07: 'NEGATIVE ACKNOWLEDGE',
+    0x08: 'MEMORY PARITY ERROR',
+    0x0A: 'GATEWAY PATH UNAVAILABLE',
+    0x0B: 'GATEWAY TARGET DEVICE FAILED TO RESPOND'
+} 
 
 def const_nome(c):
     if c == REQUEST_INT:

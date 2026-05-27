@@ -1,5 +1,8 @@
+from email import header
+
 import serial
 import time
+from .constants import MODBUS_ERRORS
 
 VAR_LENGHT = 0
 
@@ -18,24 +21,55 @@ def _open_serial():
         dsrdtr=False
     )
 
-
 # Envia um pacote e recebe a resposta
-def connect(send_data : bytes, response_lenght : int, max_retries : int, modbus=False):
+def connect(send_data: bytes, response_lenght: int, max_retries: int, modbus=False):
     ser = _open_serial()
     ser.write(send_data)
 
     response = b''
-    len_ind = 0 if not modbus else 3
 
     for attempt in range(max_retries):
         response = b''
         try:
-            if(response_lenght <= VAR_LENGHT):
-                response = ser.read(1 if not modbus else len_ind+1)
+            if modbus:
+                header = ser.read(2)
 
-                response += ser.read(response[len_ind] + (2 if modbus else 0))
+                if len(header) < 2:
+                    raise TimeoutError('Timeout ao receber resposta MODBUS')
+                
+                function_code = header[1]
+                
+                if function_code & 0x80:
+                    rest = ser.read(2)
+                    response = header + rest
+
+                    print(f'Pacote recebido: {response}')
+
+                    exception_code = response[0]
+
+                    raise Exception(
+                        f'ERRO MODBUS '
+                        f'[{exception_code:#04x}]: '
+                        f'{MODBUS_ERRORS.get(exception_code, "UNKNOWN ERROR")}'
+                    )
+
+                if response_lenght <= VAR_LENGHT:
+                    rest = ser.read(2)
+
+                    response = header + rest
+
+                    str_size = response[3]
+
+                    response += ser.read(str_size + 2)
+                else:
+                    response = header + ser.read(response_lenght + 3)
             else:
-                response = ser.read(response_lenght + (5 if modbus else 0))
+                if response_lenght <= VAR_LENGHT:
+                    response = ser.read(1)
+                    response += ser.read(response[0])
+                else:
+                    response = ser.read(response_lenght)
+
         except serial.SerialTimeoutException:
             print(f'ERRO: Timeout')
         except serial.SerialException as e:

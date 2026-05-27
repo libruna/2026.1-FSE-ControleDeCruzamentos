@@ -7,7 +7,7 @@
 - [Desenvolvedoras](#desenvolvedoras)
 
 ## Visão geral
-O projeto consiste no desenvolvimento de um sistema distribuído na Raspberry Pi para controlar e monitorar cruzamentos de trânsito, utilizando GPIO para interação com sinais e sensores, e comunicação UART/RS485 para integração com o simulador.
+O projeto consiste no desenvolvimento de um sistema distribuído na Raspberry Pi para controlar e monitorar cruzamentos de trânsito, utilizando GPIO para interação com sinais e sensores, e comunicação UART para integração com o simulador.
 
 A proposta completa do projeto pode ser consultada [aqui](https://gitlab.com/fse_fga/trabalhos-2026_1/trabalho-1-2026-1/-/tree/main?ref_type=heads).
 
@@ -43,10 +43,26 @@ Para iniciar, execute:
 python3 main.py
 ```
 
-### Testes
+#### Entrega 1
+Utilize o Dashboard (conforme a [Figura 1](https://gitlab.com/fse_fga/trabalhos-2026_1/trabalho-1-2026-1/-/blob/main/Entrega_1.md) do enunciado do trabalho - Entrega 1) para interagir com o sistema.
 
-- **Logs:** O programa exibirá no terminal as mudanças de estado dos semáforos e a detecção do acionamento do botão de pedestre.
-- **Controle:** Utilize o Dashboard (conforme a figura 1 do enunciado do trabalho - Entrega 1) para interagir com o sistema.
+O programa exibirá no terminal as mudanças de estado dos semáforos e a detecção do acionamento do botão de pedestre.
+
+#### Entrega 2
+O sistema pode ser controlado pelo submenu de comunicação UART, permitindo alternar entre o protocolo simplificado e o MODBUS Modificado.
+
+Cada operação exibe na tela toda a sequência de bytes enviados e recebidos, bem como o respectivo valor decodificado. Além disso, as respostas das operações também podem ser observadas pelo Dashboard (conforme a [Figura 1](https://gitlab.com/fse_fga/trabalhos-2026_1/trabalho-1-2026-1/-/blob/main/Entrega_2.md) do enunciado do trabalho - Entrega 2).
+
+- **Dashboard UART**
+<br>
+![matrícula em destaque no widget](./img/dashboard-uart.png)
+Figura 1 - Matrícula em destaque no widget do dashboard
+
+<br>
+
+- **Vídeo de demonstração da execução**
+<br>-
+Vídeo 1 - Demonstração das operações de comunicação
 
 ## Desenvolvedoras
 <div align="center">
