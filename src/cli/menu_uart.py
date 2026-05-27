@@ -457,7 +457,7 @@ def _modbus_interpret_header(response):
     print(f'add (endereço): {_strhex(response[0:1])}')
     print(f'fun (função): {_strhex(response[1:2])}')
     opnome = const_nome(response[2:3])
-    print(f'op = {'operação inválida' if not opnome else opnome}')
+    print(f'op = {"operação inválida" if not opnome else opnome}')
 
 def _strhex(s):
     return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
