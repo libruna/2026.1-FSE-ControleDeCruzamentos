@@ -55,14 +55,14 @@ Cada operação exibe na tela toda a sequência de bytes enviados e recebidos, b
 
 - **Dashboard UART**
 <br>
-![matrícula em destaque no widget](./img/dashboard-uart.png)
+![matrícula em destaque no widget](./media/dashboard-uart.png)
 Figura 1 - Matrícula em destaque no widget do dashboard
 
 <br>
 
 - **Vídeo de demonstração da execução**
-<br>-
-Vídeo 1 - Demonstração das operações de comunicação
+<br>
+[Assistir vídeo de demonstração da entrega 2](./media/demonstracao-entrega2)
 
 ## Desenvolvedoras
 <div align="center">
