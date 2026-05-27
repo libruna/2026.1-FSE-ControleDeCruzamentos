@@ -1,4 +1,8 @@
 from uart import protocol_simple, protocol_modbus
+from uart.constants import *
+from uart.parser import *
+from uart.uart_connection import connect
+import re
 
 def menu_uart():
     while True:
@@ -35,26 +39,53 @@ def menu_simple_protocol():
 
         option = input('\nEscolha: ')
 
+        operation = b''
+        value = b''
+
         if option == '1':
-            protocol_simple.request_int()
+            operation = REQUEST_INT
+
+            response = _send_protocol_simple(operation)
+
+            _interpret(operation, response)
 
         elif option == '2':
-            protocol_simple.request_float()
+            operation = REQUEST_FLOAT
+
+            response = _send_protocol_simple(operation)
+
+            _interpret(operation, response)
 
         elif option == '3':
-            protocol_simple.request_string()
+            operation = REQUEST_STRING
+
+            response = _send_protocol_simple(operation)
+
+            _interpret(operation, response)
 
         elif option == '4':
-            value = int(input('Digite um inteiro: '))
-            protocol_simple.send_int(value)
+            operation = SEND_INT
+            value = int_to_bytes(int(input('Digite um inteiro: ')))
+
+            response = _send_protocol_simple(operation, value)
+
+            _interpret(operation, response)
 
         elif option == '5':
-            value = float(input('Digite um float: '))
-            protocol_simple.send_float(value)
+            operation = SEND_FLOAT
+            value = float_to_bytes(float(input('Digite um float: ')))
+
+            response = _send_protocol_simple(operation, value)
+
+            _interpret(operation, response)
 
         elif option == '6':
-            value = input('Digite uma string: ')
-            protocol_simple.send_string(value)
+            operation = SEND_STRING
+            value = string_to_bytes(input('Digite uma string: '))
+
+            response = _send_protocol_simple(operation, value)
+
+            _interpret(operation, response)
 
         elif option == '0':
             print('Encerrando...')
@@ -76,26 +107,63 @@ def menu_modbus_protocol():
 
         option = input('\nEscolha: ')
 
+        function = b''
+        operation = b''
+        value = b''
+
         if option == '1':
-            protocol_modbus.request_int()
+            function = REQUEST_CODE
+            operation = REQUEST_INT
+
+            response = _send_protocol_modbus(operation, function)
+
+            _interpret(operation, response)
 
         elif option == '2':
-            protocol_modbus.request_float()
+            function = REQUEST_CODE
+            operation = REQUEST_FLOAT
+
+            response = _send_protocol_modbus(operation, function)
+
+            _interpret(operation, response)
 
         elif option == '3':
-            protocol_modbus.request_string()
+            function = REQUEST_CODE
+            operation = REQUEST_STRING
+
+            response = _send_protocol_modbus(operation, function)
+
+            _interpret(operation, response)
 
         elif option == '4':
-            value = int(input('Digite um inteiro: '))
-            protocol_modbus.send_int(value)
+            function = SEND_CODE
+            operation = SEND_INT
+
+            value = int_to_bytes(int(input('Digite um inteiro: ')))
+
+            response = _send_protocol_modbus(operation, function, value)
+
+            _interpret(operation, response)
 
         elif option == '5':
-            value = float(input('Digite um float: '))
-            protocol_modbus.send_float(value)
+            function = SEND_CODE
+            operation = SEND_FLOAT
+
+            value = float_to_bytes(float(input('Digite um float: ')))
+
+            response = _send_protocol_modbus(operation, function, value)
+
+            _interpret(operation, response)
 
         elif option == '6':
-            value = input('Digite uma string: ')
-            protocol_modbus.send_string(value)
+            function = SEND_CODE
+            operation = SEND_STRING
+
+            value = string_to_bytes(input('Digite uma string: '))
+
+            response = _send_protocol_modbus(operation, function, value)
+
+            _interpret(operation, response)
 
         elif option == '0':
             print('Encerrando...')
@@ -103,3 +171,114 @@ def menu_modbus_protocol():
 
         else:
             print('Opção inválida')
+
+def _send_protocol_simple(operation, value = b'') -> bytes:
+    payload = protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)
+
+    if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
+        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'                    ^   ^------matrícula-----^')
+        print(f'                    op                        \n')
+        print(f'op = {const_nome(operation)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+
+    elif operation in (SEND_INT, SEND_FLOAT):
+        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'                    ^   ^---valor----^  ^------matrícula-----^')
+        print(f'                    op                                        \n')
+        print(f'op = {const_nome(operation)}')
+        print(f'valor = {bytes_to_float(value) if operation == SEND_FLOAT else bytes_to_int(value)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+
+    else:
+        print(f'Pacote enviado: {_strhex(payload)}')
+        if(len(value) == 1):
+            print(f'                    ^   ^   ^   ^------matrícula-----^')
+        if(len(value) == 2):
+            print(f'                    ^   ^   ^str-^  ^------matrícula-----^')
+        else:
+            print(f'                    ^   ^   ^--{'str':-^{(len(value)-2)*4}}--^  ^------matrícula-----^')
+        print(f'                    op len {'str' if len(value) == 1 else '  '}                                                      \n')
+        print(f'op = {const_nome(operation)}')
+        print(f'len (tamanho) = {len(value)}')
+        print(f'str = {bytes_to_string(value)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+
+    print()
+
+    response_lenght = VAR_LENGHT if operation in (SEND_STRING, REQUEST_STRING) else 4
+
+    return connect(payload, response_lenght, 5)
+
+
+
+def _send_protocol_modbus(operation, function, value = b'') -> bytes:
+    payload = protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)
+
+    payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+    if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
+        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'                    ^   ^   ^   ^------matrícula-----^  ^CRC-^')
+        print(f'                   add fun  op                                \n')
+        print(f'add (endereço): {_strhex(ADDRESS)}')
+        print(f'fun (função): {_strhex(function)}')
+        print(f'op = {const_nome(operation)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+        print(f'crc = {_strhex(payload[-2:])}')
+
+    elif operation in (SEND_INT, SEND_FLOAT):
+        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'                    ^   ^   ^   ^---valor----^  ^------matrícula-----^  ^CRC-^')
+        print(f'                   add fun  op                                \n')
+        print(f'add (endereço): {_strhex(ADDRESS)}')
+        print(f'fun (função): {_strhex(function)}')
+        print(f'op = {const_nome(operation)}')
+        print(f'valor = {bytes_to_float(value) if operation == SEND_FLOAT else bytes_to_int(value)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+        print(f'crc = {_strhex(payload[-2:])}')
+
+    else:
+        print(f'Pacote enviado: {_strhex(payload)}')
+        if(len(value) == 1):
+            print(f'                    ^   ^   ^   ^   ^   ^------matrícula-----  ^CRC-^^')
+        if(len(value) == 2):
+            print(f'                    ^   ^   ^   ^   ^str-^  ^------matrícula-----^  ^CRC-^')
+        else:
+            print(f'                    ^   ^   ^   ^   ^--{'str':-^{(len(value)-2)*4}}--^  ^------matrícula-----^  ^CRC-^')
+        print(f'                   add fun  op len {'str' if len(value) == 1 else '  '}                                                      \n')
+        print(f'add (endereço): {_strhex(ADDRESS)}')
+        print(f'fun (função): {_strhex(function)}')
+        print(f'op = {const_nome(operation)}')
+        print(f'len (tamanho) = {len(value)}')
+        print(f'str = {bytes_to_string(value)}')
+        print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
+        print(f'crc = {_strhex(payload[-2:])}')
+
+    print()
+
+    response_lenght = VAR_LENGHT if operation in (SEND_STRING, REQUEST_STRING) else 4
+
+    return connect(payload, response_lenght, 5)
+
+def _interpret(operation : bytes, response: bytes):
+    print(f'Pacote recebido: {_strhex(response)}')
+
+    if operation in (SEND_STRING, REQUEST_STRING):
+        lenght = response[0]
+        value = bytes_to_string(response[1:])
+
+        print(f'Tamanho: {lenght} — String: {value}')
+    elif operation in (SEND_FLOAT, REQUEST_FLOAT):
+        value = bytes_to_float(response)
+
+        print(f'Float recebido: {value}')
+    elif operation in (SEND_INT, REQUEST_INT):
+        value = bytes_to_int(response)
+
+        print(f'Inteiro recebido: {value}')
+    else:
+        print('ERRO: Pacote inválido recebido')
+
+def _strhex(s):
+    return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
