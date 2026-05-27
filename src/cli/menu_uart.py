@@ -3,7 +3,7 @@ from urllib import response
 from uart import protocol_simple, protocol_modbus
 from uart.constants import *
 from uart.parser import *
-from uart.uart_connection import connect
+from uart.uart_connection import get_response, open_serial
 import re
 
 VAR_LENGHT = 0
@@ -49,39 +49,94 @@ def menu_simple_protocol():
         if option == '1':
             operation = REQUEST_INT
 
-            response = _send_protocol_simple(operation)
+            payload = _make_payload(operation)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '2':
             operation = REQUEST_FLOAT
 
-            response = _send_protocol_simple(operation)
+            payload = _make_payload(operation)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '3':
             operation = REQUEST_STRING
 
-            response = _send_protocol_simple(operation)
+            payload = _make_payload(operation)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, VAR_LENGHT, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '4':
             operation = SEND_INT
             value = int_to_bytes(int(input('Digite um inteiro: ')))
 
-            response = _send_protocol_simple(operation, value)
+            payload = _make_payload(operation, value)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation, value)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '5':
             operation = SEND_FLOAT
             value = float_to_bytes(float(input('Digite um float: ')))
 
-            response = _send_protocol_simple(operation, value)
+            payload = _make_payload(operation, value)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation, value)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '6':
             operation = SEND_STRING
@@ -91,9 +146,20 @@ def menu_simple_protocol():
                 print('Entrada inválida')
                 continue
 
-            response = _send_protocol_simple(operation, value)
+            payload = _make_payload(operation, value)
 
-            _interpret(operation, response)
+            _interpret_sent_simple(payload, operation, value)
+
+            try:
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, VAR_LENGHT, 5)
+                _interpret_response(response, operation)
+
+                ser.close()
+            except Exception as e:
+                print(e)
 
         elif option == '0':
             print('Encerrando...')
@@ -123,9 +189,19 @@ def menu_modbus_protocol():
             function = REQUEST_CODE
             operation = REQUEST_INT
 
+            payload = _make_payload(operation)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -133,9 +209,19 @@ def menu_modbus_protocol():
             function = REQUEST_CODE
             operation = REQUEST_FLOAT
 
+            payload = _make_payload(operation)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -143,9 +229,19 @@ def menu_modbus_protocol():
             function = REQUEST_CODE
             operation = REQUEST_STRING
 
+            payload = _make_payload(operation)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, VAR_LENGHT, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -155,9 +251,19 @@ def menu_modbus_protocol():
 
             value = int_to_bytes(int(input('Digite um inteiro: ')))
 
+            payload = _make_payload(operation, value)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function, value)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -167,9 +273,19 @@ def menu_modbus_protocol():
 
             value = float_to_bytes(float(input('Digite um float: ')))
 
+            payload = _make_payload(operation, value)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function, value)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, 4, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -183,9 +299,19 @@ def menu_modbus_protocol():
                 print('Entrada inválida')
                 continue
 
+            payload = _make_payload(operation, value)
+            payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
+
+            _interpret_sent_modbus(payload, operation, function, value)
+
             try:
-                response = _send_protocol_modbus(operation, function, value)
-                _interpret(operation, response, True)
+                ser = open_serial()
+                ser.write(payload)
+
+                response = get_response(ser, payload, VAR_LENGHT, 5, True)
+                _interpret_response(response, operation, True)
+
+                ser.close()
             except Exception as e:
                 print(e)
 
@@ -196,8 +322,7 @@ def menu_modbus_protocol():
         else:
             print('Opção inválida')
 
-def _send_protocol_simple(operation, value = b'') -> bytes:
-    payload = protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)
+def _interpret_sent_simple(payload, operation, value = b''):
 
     if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
         print(f'Pacote enviado: {_strhex(payload)}')
@@ -230,15 +355,7 @@ def _send_protocol_simple(operation, value = b'') -> bytes:
 
     print()
 
-    response_lenght = VAR_LENGHT if operation in (SEND_STRING, REQUEST_STRING) else 4
-
-    return connect(payload, response_lenght, 5)
-
-def _send_protocol_modbus(operation, function, value = b'') -> bytes:
-    payload = protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)
-
-    payload = protocol_modbus.wrap_modbus(ADDRESS, function, payload)
-
+def _interpret_sent_modbus(payload, operation, function, value = b'') -> bytes:
     if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
         print(f'Pacote enviado: {_strhex(payload)}')
         print(f'                    ^   ^   ^   ^------matrícula-----^  ^CRC-^')
@@ -279,11 +396,7 @@ def _send_protocol_modbus(operation, function, value = b'') -> bytes:
 
     print()
 
-    response_lenght = VAR_LENGHT if operation in (SEND_STRING, REQUEST_STRING) else 4
-
-    return connect(payload, response_lenght, 5, modbus=True)
-
-def _interpret(operation : bytes, response: bytes, modbus=False):
+def _interpret_response(response, operation : bytes, modbus=False):
     print(f'Pacote recebido: {_strhex(response)}')
 
     len_ind = 0 if not modbus else 3
@@ -343,7 +456,11 @@ def _interpret(operation : bytes, response: bytes, modbus=False):
 def _modbus_interpret_header(response):
     print(f'add (endereço): {_strhex(response[0:1])}')
     print(f'fun (função): {_strhex(response[1:2])}')
-    print(f'op = {const_nome(_strhex(response[2:3]))}')
+    opnome = const_nome(response[2:3])
+    print(f'op = {'operação inválida' if not opnome else opnome}')
 
 def _strhex(s):
     return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
+
+def _make_payload(operation, value = b''):
+    return protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)

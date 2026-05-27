@@ -6,7 +6,7 @@ from .constants import MODBUS_ERRORS
 
 VAR_LENGHT = 0
 
-def _open_serial():
+def open_serial():
     return serial.Serial(
         port='/dev/serial0',
         baudrate=115200,
@@ -22,10 +22,7 @@ def _open_serial():
     )
 
 # Envia um pacote e recebe a resposta
-def connect(send_data: bytes, response_lenght: int, max_retries: int, modbus=False):
-    ser = _open_serial()
-    ser.write(send_data)
-
+def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, modbus=False):
     response = b''
 
     for attempt in range(max_retries):
@@ -85,5 +82,4 @@ def connect(send_data: bytes, response_lenght: int, max_retries: int, modbus=Fal
         if attempt < max_retries - 1:
             time.sleep(0.1)
 
-    ser.close()
     return response

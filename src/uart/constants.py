@@ -39,3 +39,5 @@ def const_nome(c):
         return 'Envia float'
     elif c == SEND_STRING:
         return 'Envia string'
+    else:
+        return None
