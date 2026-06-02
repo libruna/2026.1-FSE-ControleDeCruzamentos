@@ -35,7 +35,12 @@ class TrafficLight:
 
         elif self.state == 'red' and state_duration >= self.red_mintime and not block_green:
             self._change_state(time, 'green')
+    
+    def force_state(self, time, state):
+        if state not in ('green', 'red', 'yellow'):
+            raise ValueError(f'estado inválido: {self.name}:{state}')
+        self._change_state(self, time, state)
 
-    def queue_pedestrian(self):
+    def queue_pedestrian(self, canal = None):
         self.waiting = True
         print(f'travessia requisitada em {self.name}')

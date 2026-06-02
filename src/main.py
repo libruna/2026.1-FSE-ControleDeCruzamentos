@@ -1,19 +1,24 @@
 from cli.menu_gpio import menu_gpio
 from cli.menu_uart import menu_uart
+from cli.menu_lpr import menu_lrp
 
 def main():
     while True:
         print("\n------- MENU -------")
         print("1 - Controle de Cruzamentos")
-        print("2 - Comunicação UART")
+        print("2 - Cruzamentos LPR")
+        print("3 - Comunicação UART")
         print("0 - Sair")
 
         option = input("\nEscolha: ")
 
         if option == "1":
             menu_gpio()
-
+        
         elif option == "2":
+            menu_lpr()
+
+        elif option == "3":
             menu_uart()
 
         elif option == "0":
