@@ -1,5 +1,3 @@
-import time
-
 class TrafficLight:
 
     def __init__(self, name, initial_state, min_green, max_green, min_yellow, min_red):

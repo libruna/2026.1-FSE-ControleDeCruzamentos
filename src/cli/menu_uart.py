@@ -1,7 +1,7 @@
 from urllib import response
 
 from uart import protocol_simple, protocol_modbus
-from uart.constants import *
+from config.modbus import *
 from uart.parser import *
 from uart.uart_connection import get_response, open_serial
 import re

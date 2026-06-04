@@ -2,7 +2,7 @@ from email import header
 
 import serial
 import time
-from .constants import MODBUS_ERRORS
+from config.modbus import MODBUS_ERRORS
 
 VAR_LENGHT = 0
 

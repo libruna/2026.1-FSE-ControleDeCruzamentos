@@ -2,6 +2,7 @@ from config import pins
 from gpio.gpio_controller import GPIOController
 from model.traffic_light import TrafficLight
 from time import sleep
+from network.tcp_client import connect_to_central
 
 def gpio_traffic_light_system():
     gpio = GPIOController()
@@ -34,7 +35,7 @@ def gpio_traffic_light_system():
     )
 
     gpio.setup_input(pins.IN_C_1)
-    gpio.setup_input(pins.IN_1_P)
+    gpio.setup_input(pins.IN_P_1)
     gpio.setup_input(pins.IN_C_2)
     gpio.setup_input(pins.IN_P_2)
 
@@ -109,6 +110,9 @@ def gpio_traffic_light_system():
     time = 0
 
     try:
+        client = connect_to_central()
+        client.send(b'cruzamento conectado')
+         
         while True:
             tres_leds.execute(time, False)
             output_m1(tres_leds.state)

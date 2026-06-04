@@ -1,6 +1,6 @@
 from cli.menu_gpio import menu_gpio
 from cli.menu_uart import menu_uart
-from cli.menu_lpr import menu_lrp
+from cli.menu_lpr import menu_lpr
 
 def main():
     while True:
