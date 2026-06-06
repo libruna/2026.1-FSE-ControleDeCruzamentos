@@ -1,5 +1,5 @@
 #!/bin/bash
 
-python main.py 1 &
-python main.py 2 &
-python server.py
+python src/main.py 1 &
+python src/main.py 2 &
+python src/server.py
