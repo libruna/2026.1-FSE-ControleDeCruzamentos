@@ -1,32 +1,26 @@
-from cli.menu_gpio import menu_gpio
-from cli.menu_uart import menu_uart
-from cli.menu_lpr import menu_lpr
+import sys
+import config.pins as pins
+from lpr.traffic_light_system import traffic_light_system
 
 def main():
-    while True:
-        print("\n------- MENU -------")
-        print("1 - Controle de Cruzamentos")
-        print("2 - Cruzamentos LPR")
-        print("3 - Comunicação UART")
-        print("0 - Sair")
+    # Verifica o ID do cruzamento passado como argumento
+    if len(sys.argv) < 2:
+        print('[ERRO] Informe o ID do cruzamento ao iniciar. Exemplo: python main.py 1')
+        sys.exit(1)
 
-        option = input("\nEscolha: ")
+    cruzamento_id = sys.argv[1]
 
-        if option == "1":
-            menu_gpio()
-        
-        elif option == "2":
-            menu_lpr()
+    if cruzamento_id == '1':
+        print('[INFO] Inicializando Servidor Distribuído do Cruzamento 1...')
+        traffic_light_system('1', pins.BIT_1_0, pins.BIT_1_1, pins.BIT_1_2, pins.IN_P_1, pins.IN_C_1)
+    
+    elif cruzamento_id == '2':
+        print('[INFO] Inicializando Servidor Distribuído do Cruzamento 2...')
+        traffic_light_system('2', pins.BIT_2_0, pins.BIT_2_1, pins.BIT_2_2, pins.IN_P_2, pins.IN_C_2)
+    
+    else:
+        print(f"[ERRO] Cruzamento '{cruzamento_id}' inválido. Escolha 1 ou 2.")
+        sys.exit(1)
 
-        elif option == "3":
-            menu_uart()
-
-        elif option == "0":
-            print('Encerrando...')
-            break
-
-        else:
-            print("Opção inválida")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
