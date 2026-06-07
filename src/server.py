@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 
 from config.network import HOST, PORT
 
@@ -48,6 +47,15 @@ def handle_client(client_socket, client_address):
             data = client_socket.recv(1024).decode('utf-8')
             if not data:
                 break
+
+            if data.startswith("INFRACTION"):
+                parts = data.split(':')
+                
+                if len(parts) == 4:
+                    # multa
+                    print(f"\n[INFO] Cruzamento {parts[1]} ({parts[2]}) detectou uma infração: carro a {parts[3]} km/h!")
+                
+                continue
             
             if data.count(':') == 2:
                 client_id, sensor_id, count = data.split(':')
@@ -148,7 +156,7 @@ def start_server():
         status_thread = threading.Thread(target=status_listener, args=(1,), daemon=True)
         status_thread.start()
 
-        print(f'Servidor Central operando em [{HOST}:{PORT}]')
+        print(f'\nServidor Central operando em [{HOST}:{PORT}]')
     
         # Thread para interface do usuário
         while True:
@@ -171,26 +179,26 @@ def start_server():
                 submenu_option = input('\nEscolha uma opção: ')
 
                 if submenu_option == '1':
-                    send_command('cruzamento_1', 'night_mode')
+                    send_command('cruzamento_1', 'NIGHT_MODE_ON')
                 elif submenu_option == '2':
-                    send_command('cruzamento_2', 'night_mode')
+                    send_command('cruzamento_2', 'NIGHT_MODE_ON')
                 elif submenu_option == '0':
                     print('\nEncerrando...')
                     break
 
             elif option == '3':
                 print(f""" \
-active: {system_status.active}
-road: {system_status.road}
-direction: {system_status.direction}
-intersection_id: {system_status.intersection_id}
-vehicle_type: {system_status.vehicle_type}
-signal_group: {system_status.signal_group}
-timed_out: {system_status.timed_out}
-unnatended_count: {system_status.unattended_count}
-elapsed_s_x10: {system_status.elapsed_s_x10}
-max_time_s_x10: {system_status.max_time_s_x10}
-night_mode: {system_status.night_mode}
+                    active: {system_status.active}
+                    road: {system_status.road}
+                    direction: {system_status.direction}
+                    intersection_id: {system_status.intersection_id}
+                    vehicle_type: {system_status.vehicle_type}
+                    signal_group: {system_status.signal_group}
+                    timed_out: {system_status.timed_out}
+                    unnatended_count: {system_status.unattended_count}
+                    elapsed_s_x10: {system_status.elapsed_s_x10}
+                    max_time_s_x10: {system_status.max_time_s_x10}
+                    night_mode: {system_status.night_mode}
                 """)
             elif option == '0':
                 print('\nEncerrando...')

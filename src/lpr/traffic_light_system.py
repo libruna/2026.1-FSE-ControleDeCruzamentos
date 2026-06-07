@@ -5,11 +5,14 @@ from time import sleep
 from model.speed_sensor import SpeedSensor
 from network.tcp_client import connect_to_central
 
-def get_state(estado_principal, estado_cruzamento, noite):
+def get_state(estado_principal, estado_cruzamento, noite, time):
     output = [False, False, False] # Estado 0
 
     if noite:
-        pass
+        if int(time) % 2 == 0:
+            pass 
+        else:
+            output[2] = True
     elif estado_principal == 'green' and estado_cruzamento == 'red': # Estado 1
         output[0] = True
     elif estado_principal == 'yellow' and estado_cruzamento == 'red': # Estado 2
@@ -23,7 +26,7 @@ def get_state(estado_principal, estado_cruzamento, noite):
         output[1] = True
         output[2] = True
     else:
-        print('ESTADO INVALIDO')
+        print('[ERRO] ESTADO INVALIDO')
     
     return output
 
@@ -70,6 +73,14 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
     client_id = f'cruzamento_{name}'
     print(f"\nInicializando {client_id.upper()}...")
 
+    def send_infraction_alert(sensor_id, velocity):
+        message = f"INFRACTION:{name}:{sensor_id}:{velocity:.2f}"
+        try:
+            client.send(message.encode('utf-8'))
+            print(f"[INFO] Infração detectada no {sensor_id}: {velocity:.2f} km/h. Enviando ao servidor...")
+        except Exception as e:
+            print(f"[ERRO] Falha ao enviar infração: {e}")
+
     # Sensores cruzamento 1
     if name == "1":
         gpio.setup_input(16)
@@ -77,13 +88,13 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
         gpio.setup_input(21)
         gpio.setup_input(27)
 
-        sensor_1 = SpeedSensor('sensor_1')
-        sensor_2 = SpeedSensor('sensor_2')
+        sensor_1 = SpeedSensor('sensor_1', on_infraction=send_infraction_alert)
+        sensor_2 = SpeedSensor('sensor_2', on_infraction=send_infraction_alert)
 
-        gpio.add_event_detect(16, callback=sensor_1.trigger_a)
-        gpio.add_event_detect(20, callback=sensor_1.trigger_b)
-        gpio.add_event_detect(21, callback=sensor_2.trigger_a)
-        gpio.add_event_detect(27, callback=sensor_2.trigger_b)
+        gpio.add_event_detect(16, callback=sensor_1.trigger_a, bouncetime=1)
+        gpio.add_event_detect(20, callback=sensor_1.trigger_b, bouncetime=1)
+        gpio.add_event_detect(21, callback=sensor_2.trigger_a, bouncetime=1)
+        gpio.add_event_detect(27, callback=sensor_2.trigger_b, bouncetime=1)
 
     # Sensores cruzamento 2
     if name == "2":
@@ -92,27 +103,39 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
         gpio.setup_input(5)
         gpio.setup_input(6) 
 
-        sensor_3 = SpeedSensor('sensor_3')
-        sensor_4 = SpeedSensor('sensor_4')
+        sensor_3 = SpeedSensor('sensor_3', on_infraction=send_infraction_alert)
+        sensor_4 = SpeedSensor('sensor_4', on_infraction=send_infraction_alert)
 
-        gpio.add_event_detect(11, callback=sensor_3.trigger_a)
-        gpio.add_event_detect(0, callback=sensor_3.trigger_b)
-        gpio.add_event_detect(5, callback=sensor_4.trigger_a)
-        gpio.add_event_detect(6, callback=sensor_4.trigger_b)
+        gpio.add_event_detect(11, callback=sensor_3.trigger_a, bouncetime=1)
+        gpio.add_event_detect(0, callback=sensor_3.trigger_b, bouncetime=1)
+        gpio.add_event_detect(5, callback=sensor_4.trigger_a, bouncetime=1)
+        gpio.add_event_detect(6, callback=sensor_4.trigger_b, bouncetime=1)
 
     client = connect_to_central()
     
     time = 0
+    night_mode = False
 
     try:
         while True:
             cruzamento.execute(time, principal.state != 'red')
             principal.execute(time, cruzamento.state != 'red')
 
-            # TODO: noite/dia tcp/ip
-            noite = False
+            try:
+                data = client.recv(1024).decode('utf-8')
+            
+                if data == 'NIGHT_MODE_ON':
+                    night_mode = True
+                    print("\n[INFO] Modo Noturno ativado!")
+                elif data == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
+                    night_mode = False
+                    print("\n[INFO] Modo Noturno desativado!")
+            except BlockingIOError:
+                pass
+            except Exception as e:
+                pass
 
-            output = get_state(principal.state, cruzamento.state, noite)
+            output = get_state(principal.state, cruzamento.state, night_mode, time)
 
             # TODO: emergencia tcp/ip
             # use metodo principal.force_state(time, state)

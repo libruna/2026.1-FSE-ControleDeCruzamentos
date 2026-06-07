@@ -9,5 +9,6 @@ def connect_to_central():
     )
 
     client.connect((HOST, PORT))
+    client.setblocking(False)
 
     return client
