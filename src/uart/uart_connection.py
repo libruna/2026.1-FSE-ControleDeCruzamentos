@@ -6,11 +6,11 @@ from config.modbus import MODBUS_ERRORS
 
 VAR_LENGHT = 0
 
-def open_serial():
+def open_serial(timeout = 1):
     return serial.Serial(
         port='/dev/serial0',
         baudrate=115200,
-        timeout=1,
+        timeout=timeout,
         bytesize=serial.EIGHTBITS, # Bits de dados (por byte)
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
@@ -22,7 +22,7 @@ def open_serial():
     )
 
 # Envia um pacote e recebe a resposta
-def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, modbus=False):
+def get_response(ser, response_lenght: int, max_retries: int, modbus=False, has_subfunction = True):
     response = b''
 
     for attempt in range(max_retries):
@@ -32,7 +32,7 @@ def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, 
                 header = ser.read(2)
 
                 if len(header) < 2:
-                    raise TimeoutError('Timeout ao receber resposta MODBUS')
+                    raise serial.SerialTimeoutException('Timeout ao receber resposta MODBUS')
                 
                 function_code = header[1]
                 
@@ -42,7 +42,7 @@ def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, 
 
                     print(f'Pacote recebido: {response}')
 
-                    exception_code = response[0]
+                    exception_code = response[2]
 
                     raise Exception(
                         f'ERRO MODBUS '
@@ -51,15 +51,15 @@ def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, 
                     )
 
                 if response_lenght <= VAR_LENGHT:
-                    rest = ser.read(2)
+                    rest = ser.read(2 if has_subfunction else 1)
 
                     response = header + rest
 
-                    str_size = response[3]
+                    str_size = response[3 if has_subfunction else 2]
 
                     response += ser.read(str_size + 2)
                 else:
-                    response = header + ser.read(response_lenght + 3)
+                    response = header + ser.read(response_lenght + 3 if has_subfunction else 2)
             else:
                 if response_lenght <= VAR_LENGHT:
                     response = ser.read(1)
@@ -69,6 +69,7 @@ def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, 
 
         except serial.SerialTimeoutException:
             print(f'ERRO: Timeout')
+            response = b''
         except serial.SerialException as e:
             print(f'ERRO: Não foi possível se comunicar com a porta serial, tentando novamente... {attempt + 1}: {e}')
             try:
@@ -77,6 +78,7 @@ def get_response(ser, send_data: bytes, response_lenght: int, max_retries: int, 
                 ser.open()
             except:
                 pass
+            response = b''
         else:
             break
         if attempt < max_retries - 1:

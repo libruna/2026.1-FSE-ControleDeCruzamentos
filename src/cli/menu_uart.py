@@ -57,7 +57,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5)
+                response = get_response(ser, 4, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -75,7 +75,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5)
+                response = get_response(ser, 4, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -93,7 +93,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, VAR_LENGHT, 5)
+                response = get_response(ser, VAR_LENGHT, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -112,7 +112,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5)
+                response = get_response(ser, 4, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -131,7 +131,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5)
+                response = get_response(ser, 4, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -154,7 +154,7 @@ def menu_simple_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, VAR_LENGHT, 5)
+                response = get_response(ser, VAR_LENGHT, 5)
                 _interpret_response(response, operation)
 
                 ser.close()
@@ -198,7 +198,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5, True)
+                response = get_response(ser, 4, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -218,7 +218,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5, True)
+                response = get_response(ser, 4, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -238,7 +238,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, VAR_LENGHT, 5, True)
+                response = get_response(ser, VAR_LENGHT, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -260,7 +260,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5, True)
+                response = get_response(ser, 4, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -282,7 +282,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, 4, 5, True)
+                response = get_response(ser, 4, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -308,7 +308,7 @@ def menu_modbus_protocol():
                 ser = open_serial()
                 ser.write(payload)
 
-                response = get_response(ser, payload, VAR_LENGHT, 5, True)
+                response = get_response(ser, VAR_LENGHT, 5, True)
                 _interpret_response(response, operation, True)
 
                 ser.close()
@@ -325,14 +325,14 @@ def menu_modbus_protocol():
 def _interpret_sent_simple(payload, operation, value = b''):
 
     if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         print(f'                    ^   ^------matrícula-----^')
         print(f'                    op                        \n')
         print(f'op = {const_nome(operation)}')
         print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
 
     elif operation in (SEND_INT, SEND_FLOAT):
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         print(f'                    ^   ^---valor----^  ^------matrícula-----^')
         print(f'                    op                                        \n')
         print(f'op = {const_nome(operation)}')
@@ -340,7 +340,7 @@ def _interpret_sent_simple(payload, operation, value = b''):
         print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
 
     else:
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         if(len(value) == 1):
             print(f'                    ^   ^   ^   ^------matrícula-----^')
         elif(len(value) == 2):
@@ -357,28 +357,28 @@ def _interpret_sent_simple(payload, operation, value = b''):
 
 def _interpret_sent_modbus(payload, operation, function, value = b'') -> bytes:
     if operation in (REQUEST_FLOAT, REQUEST_INT, REQUEST_STRING):
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         print(f'                    ^   ^   ^   ^------matrícula-----^  ^CRC-^')
         print(f'                   add fun  op                                \n')
-        print(f'add (endereço) = {_strhex(ADDRESS)}')
-        print(f'fun (função) = {_strhex(function)}')
+        print(f'add (endereço) = {strhex(ADDRESS)}')
+        print(f'fun (função) = {strhex(function)}')
         print(f'op = {const_nome(operation)}')
         print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
-        print(f'crc = {_strhex(payload[-2:])}')
+        print(f'crc = {strhex(payload[-2:])}')
 
     elif operation in (SEND_INT, SEND_FLOAT):
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         print(f'                    ^   ^   ^   ^---valor----^  ^------matrícula-----^  ^CRC-^')
         print(f'                   add fun  op                                \n')
-        print(f'add (endereço) = {_strhex(ADDRESS)}')
-        print(f'fun (função) = {_strhex(function)}')
+        print(f'add (endereço) = {strhex(ADDRESS)}')
+        print(f'fun (função) = {strhex(function)}')
         print(f'op = {const_nome(operation)}')
         print(f'valor = {bytes_to_float(value) if operation == SEND_FLOAT else bytes_to_int(value)}')
         print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
-        print(f'crc = {_strhex(payload[-2:])}')
+        print(f'crc = {strhex(payload[-2:])}')
 
     else:
-        print(f'Pacote enviado: {_strhex(payload)}')
+        print(f'Pacote enviado: {strhex(payload)}')
         if(len(value) == 1):
             print(f'                    ^   ^   ^   ^   ^   ^------matrícula-----  ^CRC-^')
         elif(len(value) == 2):
@@ -386,18 +386,18 @@ def _interpret_sent_modbus(payload, operation, function, value = b'') -> bytes:
         else:
             print(f'                    ^   ^   ^   ^   ^--{"str".center((len(value)-2) * 4, "-")}--^  ^------matrícula-----^  ^CRC-^')
         print(f'                   add fun  op len {"str" if len(value) == 1 else "   "}                                                      \n')
-        print(f'add (endereço) = {_strhex(ADDRESS)}')
-        print(f'fun (função) = {_strhex(function)}')
+        print(f'add (endereço) = {strhex(ADDRESS)}')
+        print(f'fun (função) = {strhex(function)}')
         print(f'op = {const_nome(operation)}')
         print(f'len (tamanho) = {len(value)}')
         print(f'str = {bytes_to_string(value)}')
         print(f'matricula = {raw_bytes_to_int(MATRICULA)}')
-        print(f'crc = {_strhex(payload[-2:])}')
+        print(f'crc = {strhex(payload[-2:])}')
 
     print()
 
 def _interpret_response(response, operation : bytes, modbus=False):
-    print(f'Pacote recebido: {_strhex(response)}')
+    print(f'Pacote recebido: {strhex(response)}')
 
     len_ind = 0 if not modbus else 3
 
@@ -451,16 +451,14 @@ def _interpret_response(response, operation : bytes, modbus=False):
         print('ERRO: pacote inválido recebido')
 
     if modbus:
-        print(f'crc = {_strhex(response[-2:])}')
+        print(f'crc = {strhex(response[-2:])}')
 
 def _modbus_interpret_header(response):
-    print(f'add (endereço): {_strhex(response[0:1])}')
-    print(f'fun (função): {_strhex(response[1:2])}')
+    print(f'add (endereço): {strhex(response[0:1])}')
+    print(f'fun (função): {strhex(response[1:2])}')
     opnome = const_nome(response[2:3])
     print(f'op = {"operação inválida" if not opnome else opnome}')
 
-def _strhex(s):
-    return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
 
 def _make_payload(operation, value = b''):
     return protocol_simple.make_payload(operation, len(value).to_bytes(1) if operation == SEND_STRING else b'', value, MATRICULA)

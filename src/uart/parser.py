@@ -1,7 +1,8 @@
 import struct
+import re
 
-def bytes_to_int(data: bytes) -> int:
-    return struct.unpack('<i', data)[0]
+def bytes_to_int(data: bytes, le = False) -> int:
+    return struct.unpack('<i' if not le else '>i', data)[0]
 
 def bytes_to_float(data: bytes) -> float:
     return struct.unpack('<f', data)[0]
@@ -23,3 +24,6 @@ def raw_bytes_to_int(bytes):
     for i in range(len(bytes)):
         res += bytes[len(bytes) - 1 - i] * 10**i
     return res
+
+def strhex(s):
+    return "b'" + re.sub(r'.', lambda m: f'\\x{ord(m.group(0)):02x}', s.decode('latin1')) + "'"
