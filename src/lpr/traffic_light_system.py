@@ -126,28 +126,26 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
             try:
                 data = client.recv(1024).decode('utf-8')
 
-                if not data:
-                    print("\n[INFO] Servidor Central encerrou a conexão")
-                else:
-                    messages = data.strip().split('\n')
-                    for msg in messages:
-                        if msg == 'NIGHT_MODE_ON':
-                            night_mode = True
-                            print("\n[INFO] Modo Noturno ativado!")
-                        elif msg == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
-                            night_mode = False
-                            print("\n[INFO] Modo Noturno desativado!")
-                        elif msg.startswith('EMERGENCY_ON'):
-                            _, sig_group = msg.split(':')
-                            emergency_mode = int(sig_group)
-                            print(f"\n[INFO] Emergência ativada! Liberando via {emergency_mode}")
-                        elif msg == 'EMERGENCY_OFF':
-                            emergency_mode = 0
-                            print("\n[INFO] Emergência desativada!")
+                messages = data.strip().split('\n')
+                for msg in messages:
+                    if msg == 'NIGHT_MODE_ON':
+                        night_mode = True
+                        print("\n[INFO] Modo Noturno ativado!")
+                    elif msg == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
+                        night_mode = False
+                        print("\n[INFO] Modo Noturno desativado!")
+                    elif msg.startswith('EMERGENCY_ON'):
+                        _, sig_group = msg.split(':')
+                        emergency_mode = int(sig_group)
+                        print(f"\n[INFO] Emergência ativada! Liberando via {emergency_mode}")
+                    elif msg == 'EMERGENCY_OFF':
+                        emergency_mode = 0
+                        print("\n[INFO] Emergência desativada!")
             except BlockingIOError:
                 pass
             except Exception as e:
                 print(f"\n[ERRO] Falha na leitura de dados: {e}")
+                pass
 
             if emergency_mode == 1:
                 output = [True, False, False]
@@ -178,7 +176,8 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
                     try:
                         client.send(message.encode('utf-8'))
                     except Exception as e:
-                        print(f"\n[ERRO] Falha ao enviar dados para o Servidor Central: {e}")
+                       # print(f"\n[ERRO] Falha ao enviar dados para o Servidor Central: {e}")
+                        pass
 
             sleep(0.01)
             time += 0.01
