@@ -74,7 +74,7 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
     print(f"\nInicializando {client_id.upper()}...")
 
     def send_infraction_alert(sensor_id, velocity):
-        message = f"INFRACTION:{name}:{sensor_id}:{velocity:.2f}"
+        message = f"INFRACTION:{name}:{sensor_id}:{velocity:.2f}\n"
         try:
             client.send(message.encode('utf-8'))
             print(f"[INFO] Infração detectada no {sensor_id}: {velocity:.2f} km/h. Enviando ao servidor...")
@@ -114,6 +114,7 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
     client = connect_to_central()
     
     time = 0
+    emergency_mode = 0
     night_mode = False
 
     try:
@@ -121,24 +122,39 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
             cruzamento.execute(time, principal.state != 'red')
             principal.execute(time, cruzamento.state != 'red')
 
+            data = None
             try:
                 data = client.recv(1024).decode('utf-8')
-            
-                if data == 'NIGHT_MODE_ON':
-                    night_mode = True
-                    print("\n[INFO] Modo Noturno ativado!")
-                elif data == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
-                    night_mode = False
-                    print("\n[INFO] Modo Noturno desativado!")
+
+                if not data:
+                    print("\n[INFO] Servidor Central encerrou a conexão")
+                else:
+                    messages = data.strip().split('\n')
+                    for msg in messages:
+                        if msg == 'NIGHT_MODE_ON':
+                            night_mode = True
+                            print("\n[INFO] Modo Noturno ativado!")
+                        elif msg == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
+                            night_mode = False
+                            print("\n[INFO] Modo Noturno desativado!")
+                        elif msg.startswith('EMERGENCY_ON'):
+                            _, sig_group = msg.split(':')
+                            emergency_mode = int(sig_group)
+                            print(f"\n[INFO] Emergência ativada! Liberando via {emergency_mode}")
+                        elif msg == 'EMERGENCY_OFF':
+                            emergency_mode = 0
+                            print("\n[INFO] Emergência desativada!")
             except BlockingIOError:
                 pass
             except Exception as e:
-                pass
+                print(f"\n[ERRO] Falha na leitura de dados: {e}")
 
-            output = get_state(principal.state, cruzamento.state, night_mode, time)
-
-            # TODO: emergencia tcp/ip
-            # use metodo principal.force_state(time, state)
+            if emergency_mode == 1:
+                output = [True, False, False]
+            elif emergency_mode == 2:
+                output = [True, False, True]
+            else:
+                output = get_state(principal.state, cruzamento.state, night_mode, time)
 
             gpio.output(bit0, output[0])
             gpio.output(bit1, output[1])
@@ -158,8 +174,11 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
 
                 # Mensagens no formato: 'cruzamento_A:sensor_B:quantidade'
                 for sensor_id, count in sensors.items():
-                    message = f'{client_id}:{sensor_id}:{count}'
-                    client.send(message.encode('utf-8'))
+                    message = f'{client_id}:{sensor_id}:{count}\n'
+                    try:
+                        client.send(message.encode('utf-8'))
+                    except Exception as e:
+                        print(f"\n[ERRO] Falha ao enviar dados para o Servidor Central: {e}")
 
             sleep(0.01)
             time += 0.01
