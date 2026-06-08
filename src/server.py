@@ -107,7 +107,7 @@ def send_command(client_id, command):
     if client_id in connected_clients:
         try:
             connected_clients[client_id].sendall(command.encode('utf-8'))
-            print(f'\n[SUCESSO] Comando "{command.strip()}" enviado para {client_id}.')
+            print(f'\n[SUCESSO] Comando "{command}" enviado para {client_id}.')
         except Exception as e:
             print(f'\n[ERRO] Falha ao enviar comando para {client_id}: {e}')
     else:
@@ -134,10 +134,10 @@ class LicensePlateQuery:
     def complete(self, bytes):
         self.completed = True
         lenght = len(bytes)
-        if lenght >= 16:
-            self.license_plate = bytes[1:16:2]
-        if lenght >= 18:
-            self.confidence = bytes_to_int(b'\x00\x00' + bytes[16:18], True)
+        if lenght >= 7:
+            self.license_plate = bytes_to_string(bytes[0:7])
+        if lenght >= 10:
+            self.confidence = bytes_to_int(b'\x00\x00\x00' + bytes[9:10], True)
 
     def complete_as_empty(self):
         self.completed = True
@@ -154,7 +154,6 @@ def query_license_plate(camera_addr):
     license_plate_query_requests.append(lpq)
     while not lpq.completed:
         pass
-    print(lpq)
 
 def get_licence_plate(lpq : LicensePlateQuery):
     """
@@ -163,41 +162,43 @@ def get_licence_plate(lpq : LicensePlateQuery):
 
     camera_addr = lpq.camera_addr
 
-    pl = make_payload(b'\x01\x00\x01\x00\x02\x01\x00', modbus.MATRICULA)
-    pl = wrap_modbus(camera_addr, modbus.WRITE, pl)
+    pl1 = make_payload(b'\x01\x00\x01\x00\x02\x01\x00', modbus.MATRICULA)
+    pl1 = wrap_modbus(camera_addr, modbus.WRITE, pl1)
 
     ser = open_serial(0.5)
 
-    ser.write(pl)
+    ser.write(pl1)
 
-    response = get_response(ser, 4, 1, modbus=True, has_subfunction=False)
-
+    response1 = get_response(ser, 4, 1, modbus=True, has_subfunction=False)
     cam_status = ''
 
     while cam_status not in ['ok', 'err']:
-        pl = make_payload(b'\x00\x00\x01\x00', modbus.MATRICULA)
-        pl = wrap_modbus(camera_addr, modbus.READ, pl)
+        pl2 = make_payload(b'\x00\x00\x01\x00', modbus.MATRICULA)
+        pl2 = wrap_modbus(camera_addr, modbus.READ, pl2)
 
-        ser.write(pl)
+        ser.write(pl2)
 
-        response = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=False)
+        response2 = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=False)
 
-        if response[4:5] == b'\x02': cam_status = 'ok'
-        elif response[4:5] == b'\x03': cam_status = 'err'
+        if response2[4:5] == b'\x02': cam_status = 'ok'
+        elif response2[4:5] == b'\x03': cam_status = 'err'
 
-    pl = make_payload(b'\x00\x00\x08\x00', modbus.MATRICULA)
-    pl = wrap_modbus(camera_addr, modbus.READ, pl)
+    pl3 = make_payload(b'\x00\x00\x08\x00', modbus.MATRICULA)
+    pl3 = wrap_modbus(camera_addr, modbus.READ, pl3)
 
-    ser.write(pl)
-
-    response = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=True)
-
+    ser.write(pl3)
+    response3 = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=False)
 
     if cam_status == 'err':
-        print(f'[LPR ERRO]: {response[-3]}')
+        print(f'[LPR ERRO]: {response3[-3]}')
         lpq.complete_as_empty()
     else:
-        lpq.complete(response[3:-2])
+        lpq.complete(response3[7:18])
+
+    pl4 = make_payload(b'\x01\x00\x01\x00\x02\x00\x00', modbus.MATRICULA)
+    pl4 = wrap_modbus(camera_addr, modbus.WRITE, pl4)
+
+    ser.readall()
 
     ser.close()
 
@@ -220,20 +221,19 @@ def modbus_handler(status_cooldown : float):
     global system_status
 
     last_emergency_active = 0
-    last_night_mode = -1
 
     while True:
         if license_plate_query_requests:
-            print('atendendo request')
             lpq = license_plate_query_requests.popleft()
             get_licence_plate(lpq)
+            print(lpq)
 
         status_bytes = get_status()[1:] # exclui o bytecount
         if status_bytes:
             system_status = Status(status_bytes)
             current_active = system_status.active
 
-            if current_active in [0, 1] and current_active != last_emergency_active:
+            if current_active != last_emergency_active:
                 if current_active == 1:
                     sig_group = system_status.signal_group
                     inter_id = system_status.intersection_id
@@ -246,28 +246,13 @@ def modbus_handler(status_cooldown : float):
                         send_command('cruzamento_1', cmd)
                     if inter_id in [0, 2]:
                         send_command('cruzamento_2', cmd)
-                        
-                elif current_active == 0:
+                else:
                     print("\n[INFO] Emergência encerrada. Retornando operação normal...")
                     cmd = 'EMERGENCY_OFF\n'
                     send_command('cruzamento_1', cmd)
                     send_command('cruzamento_2', cmd)
                     
                 last_emergency_active = current_active
-            
-            current_night_mode = system_status.night_mode
-            
-            if current_night_mode in [0, 1] and current_night_mode != last_night_mode:
-                if current_night_mode == 1:
-                    print("\n[INFO] MODBUS: Modo noturno ativado!")
-                    send_command('cruzamento_1', 'NIGHT_MODE_ON\n')
-                    send_command('cruzamento_2', 'NIGHT_MODE_ON\n')
-                elif current_night_mode == 0 and last_night_mode != -1:
-                    print("\n[INFO] MODBUS: Modo noturno desativado!")
-                    send_command('cruzamento_1', 'NIGHT_MODE_OFF\n')
-                    send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
-                                        
-                last_night_mode = current_night_mode
         else:
             print('[ERRO]: Falha ao receber estado')
     
@@ -326,7 +311,7 @@ def start_server():
                     break
 
             elif option == '3':
-                print(f"""\n------- ESTADO DO SISTEMA -------
+                print(f""" \
 {'emergência ativa' if system_status.active == 1 else 'sem emergência'}
 road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
 direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
