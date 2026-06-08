@@ -21,4 +21,4 @@ MODBUS_ERRORS = { # https://docs.aveva.com/bundle/sp-cdp-drivers/page/192126.htm
     0x08: 'MEMORY PARITY ERROR',
     0x0A: 'GATEWAY PATH UNAVAILABLE',
     0x0B: 'GATEWAY TARGET DEVICE FAILED TO RESPOND'
-} 
+}
