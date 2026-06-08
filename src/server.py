@@ -214,9 +214,9 @@ def get_status():
 def modbus_handler(status_cooldown : float):
     global system_status
     while True:
-        if requests:
+        if license_plate_query_requests:
             print('atendendo request')
-            lpq = requests.popleft()
+            lpq = license_plate_query_requests.popleft()
             get_licence_plate(lpq)
 
         status_bytes = get_status()[1:] # exclui o bytecount
@@ -285,7 +285,7 @@ def start_server():
 {'emergência ativa' if system_status.active == 1 else 'sem emergência'}
 road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
 direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
-intersection_id: {'ambos / n/' if asystem_status.intersection_id == 0 else '1' if asystem_status.intersection_id == 1 else '2'}
+intersection_id: {'ambos / n/' if system_status.intersection_id == 0 else '1' if system_status.intersection_id == 1 else '2'}
 vehicle_type: {'nenhum' if system_status.vehicle_type == 0 else 'ambulância' if system_status.vehicle_type == 1 else 'bombeiros' if system_status.vehicle_type == 2 else 'policia'}
 signal_group: {system_status.signal_group}
 emergência: {'OK' if system_status.timed_out == 0 else 'Falha'}
