@@ -107,7 +107,7 @@ def send_command(client_id, command):
     if client_id in connected_clients:
         try:
             connected_clients[client_id].sendall(command.encode('utf-8'))
-            print(f'\n[SUCESSO] Comando "{command}" enviado para {client_id}.')
+            print(f'\n[SUCESSO] Comando "{command.strip()}" enviado para {client_id}.')
         except Exception as e:
             print(f'\n[ERRO] Falha ao enviar comando para {client_id}: {e}')
     else:
@@ -220,6 +220,7 @@ def modbus_handler(status_cooldown : float):
     global system_status
 
     last_emergency_active = 0
+    last_night_mode = -1
 
     while True:
         if license_plate_query_requests:
@@ -232,7 +233,7 @@ def modbus_handler(status_cooldown : float):
             system_status = Status(status_bytes)
             current_active = system_status.active
 
-            if current_active != last_emergency_active:
+            if current_active in [0, 1] and current_active != last_emergency_active:
                 if current_active == 1:
                     sig_group = system_status.signal_group
                     inter_id = system_status.intersection_id
@@ -245,13 +246,28 @@ def modbus_handler(status_cooldown : float):
                         send_command('cruzamento_1', cmd)
                     if inter_id in [0, 2]:
                         send_command('cruzamento_2', cmd)
-                else:
+                        
+                elif current_active == 0:
                     print("\n[INFO] Emergência encerrada. Retornando operação normal...")
                     cmd = 'EMERGENCY_OFF\n'
                     send_command('cruzamento_1', cmd)
                     send_command('cruzamento_2', cmd)
                     
                 last_emergency_active = current_active
+            
+            current_night_mode = system_status.night_mode
+            
+            if current_night_mode in [0, 1] and current_night_mode != last_night_mode:
+                if current_night_mode == 1:
+                    print("\n[INFO] MODBUS: Modo noturno ativado!")
+                    send_command('cruzamento_1', 'NIGHT_MODE_ON\n')
+                    send_command('cruzamento_2', 'NIGHT_MODE_ON\n')
+                elif current_night_mode == 0 and last_night_mode != -1:
+                    print("\n[INFO] MODBUS: Modo noturno desativado!")
+                    send_command('cruzamento_1', 'NIGHT_MODE_OFF\n')
+                    send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
+                                        
+                last_night_mode = current_night_mode
         else:
             print('[ERRO]: Falha ao receber estado')
     
@@ -310,7 +326,7 @@ def start_server():
                     break
 
             elif option == '3':
-                print(f""" \
+                print(f"""\n------- ESTADO DO SISTEMA -------
 {'emergência ativa' if system_status.active == 1 else 'sem emergência'}
 road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
 direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
