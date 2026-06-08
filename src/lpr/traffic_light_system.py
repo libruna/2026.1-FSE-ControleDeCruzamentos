@@ -130,17 +130,17 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
                 for msg in messages:
                     if msg == 'NIGHT_MODE_ON':
                         night_mode = True
-                        print("\n[INFO] Modo Noturno ativado!")
-                    elif msg == 'NIGHT_MODE_OFF': # TODO: verificar regra para desativar modo noturno
+                        print("\n[INFO] Modo noturno ativado")
+                    elif msg == 'NIGHT_MODE_OFF': 
                         night_mode = False
-                        print("\n[INFO] Modo Noturno desativado!")
+                        print("\n[INFO] Modo noturno desativado")
                     elif msg.startswith('EMERGENCY_ON'):
                         _, sig_group = msg.split(':')
                         emergency_mode = int(sig_group)
-                        print(f"\n[INFO] Emergência ativada! Liberando via {emergency_mode}")
+                        print(f"\n[INFO] Modo de emergência ativado. Via {emergency_mode} liberada")
                     elif msg == 'EMERGENCY_OFF':
                         emergency_mode = 0
-                        print("\n[INFO] Emergência desativada!")
+                        print("\n[INFO] Modo de emergência desativado")
             except BlockingIOError:
                 pass
             except Exception as e:
@@ -161,27 +161,30 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
             if round(time, 2) % 2.0 == 0 and time > 0:
                 if name == "1":
                     sensors = {
-                        'sensor_1': sensor_1.vehicle_count,
-                        'sensor_2': sensor_2.vehicle_count
+                        'sensor_1': sensor_1,
+                        'sensor_2': sensor_2
                     }
                 else:
                     sensors = {
-                        'sensor_3': sensor_3.vehicle_count,
-                        'sensor_4': sensor_4.vehicle_count
+                        'sensor_3': sensor_3,
+                        'sensor_4': sensor_4
                     }
 
                 # Mensagens no formato: 'cruzamento_A:sensor_B:quantidade'
-                for sensor_id, count in sensors.items():
-                    message = f'{client_id}:{sensor_id}:{count}\n'
-                    try:
-                        client.send(message.encode('utf-8'))
-                    except Exception as e:
-                       # print(f"\n[ERRO] Falha ao enviar dados para o Servidor Central: {e}")
-                        pass
+                for sensor_id, sensor_obj in sensors.items():
+                        count = sensor_obj.vehicle_count
+                        avg_speed = getattr(sensor_obj, 'average_speed', 0.0)
+                        
+                        message = f'{client_id}:{sensor_id}:{count}:{avg_speed:.2f}\n'
+                        
+                        try:
+                            client.send(message.encode('utf-8'))
+                        except Exception as e:
+                            pass
 
             sleep(0.01)
             time += 0.01
     except KeyboardInterrupt:
-        print("Program terminated by user.")
+        print("Program terminated by user")
     finally:
         gpio.cleanup()

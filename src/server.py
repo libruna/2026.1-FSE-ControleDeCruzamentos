@@ -11,7 +11,9 @@ from uart.parser import *
 
 from collections import deque
 
-vehicle_data = {} # Guarda as contagens
+sensor_data = {} # Guarda as contagens de veículos de cada sensor 
+vehicle_flux = {} # Guarda o fluxo de carros por minuto de cada sensor
+vehicle_average_speeds = {} # Guarda a velocidade média dos carros de cada sensor
 connected_clients = {} # Guarda os sockets
 license_plate_query_requests = deque() # fila de requisições lpr
 
@@ -60,7 +62,7 @@ def handle_client(client_socket, client_address):
                     
                     if len(parts) == 4:
                         # multa
-                        print(f"\n[INFO] Cruzamento {parts[1]} ({parts[2]}) detectou uma infração: carro a {parts[3]} km/h!")
+                        print(f"\n[INFO] Cruzamento {parts[1]} -> ({parts[2]}) detectou uma infração: carro a {parts[3]} km/h")
 
                         mapadd = {
                             'sensor_1': modbus.LPR1,
@@ -71,24 +73,39 @@ def handle_client(client_socket, client_address):
                         th = threading.Thread(target=query_license_plate, args=(mapadd[parts[2]],),daemon=True)
                         th.start()
                 
-                elif msg.count(':') == 2:
-                    client_id, sensor_id, count = msg.split(':')
+                elif msg.count(':') == 3:
+                    client_id, s_id, count, avg_speed = msg.split(':')
                     client_id_local = client_id
+                    count_int = int(count)
+                    speed_float = float(avg_speed)
                     
                     if client_id not in connected_clients:
                         connected_clients[client_id] = client_socket
                     
-                    if client_id not in vehicle_data:
-                        vehicle_data[client_id] = {}
+                    if client_id not in sensor_data:
+                        sensor_data[client_id] = {}
+                        vehicle_flux[client_id] = {}
+                        vehicle_average_speeds[client_id] = {}
                         
-                    vehicle_data[client_id][sensor_id] = int(count)
+                    sensor_data[client_id][s_id] = count_int
+                    vehicle_average_speeds[client_id][s_id] = speed_float
+                    
+                    if s_id not in vehicle_flux[client_id]:
+                        vehicle_flux[client_id][s_id] = deque()
+                        
+                    now = time.time()
+                    queue = vehicle_flux[client_id][s_id]
+                    queue.append((now, count_int))
+                    
+                    while queue and (now - queue[0][0]) > 60:
+                        queue.popleft()
             
     except Exception as e:
         print(f"\n[ERRO] Falha ao processar dados do {client_id_local} no Servidor Central: {e}")
     finally:
         # Remove da lista de clientes ativos ao desconectar
         if client_id_local in connected_clients:
-            print(f'\n[INFO] Cliente {client_id_local} desconectado.')
+            print(f'\n[INFO] Cliente {client_id_local} desconectado')
             del connected_clients[client_id_local]
         client_socket.close()
 
@@ -107,22 +124,31 @@ def send_command(client_id, command):
     if client_id in connected_clients:
         try:
             connected_clients[client_id].sendall(command.encode('utf-8'))
-            print(f'\n[SUCESSO] Comando "{command}" enviado para {client_id}.')
+            print(f'\n[SUCESSO] Comando "{command.strip()}" enviado para {client_id}')
         except Exception as e:
             print(f'\n[ERRO] Falha ao enviar comando para {client_id}: {e}')
     else:
-        print(f'\n[INFO] {client_id} não está conectado.')
+        print(f'\n[INFO] {client_id} não está conectado')
 
 def show_traffic_info():
     print('\n------- Monitoramento -------')
 
-    if not vehicle_data:
-        print('\nNenhum dado de cruzamento recebido até o momento.')
+    if not sensor_data:
+        print('\n[INFO] Nenhum dado de cruzamento recebido até o momento')
     else:
-        for client_id, sensors in vehicle_data.items():
+        for client_id, sensors in sensor_data.items():
             print(f'{client_id.upper()}')
             for s_id, count in sensors.items():
-                print(f'   - {s_id}: {count} veículos')
+                queue = vehicle_flux[client_id].get(s_id, [])
+                
+                if len(queue) >= 2:
+                    flux_per_minute = queue[-1][1] - queue[0][1]
+                else:
+                    flux_per_minute = 0                
+                
+                avg_speed = vehicle_average_speeds.get(client_id, {}).get(s_id, 0.0)
+                
+                print(f'   - {s_id}: {count} carros no total | {flux_per_minute} carros/min  | VM = {avg_speed:.1f} km/h')
 
 class LicensePlateQuery:
     def __init__(self, camera_addr):
@@ -220,7 +246,8 @@ def get_status():
 def modbus_handler(status_cooldown : float):
     global system_status
 
-    last_emergency_active = 0
+    last_emergency_active = None
+    last_night_mode = None
 
     while True:
         if license_plate_query_requests:
@@ -231,30 +258,48 @@ def modbus_handler(status_cooldown : float):
         status_bytes = get_status()[1:] # exclui o bytecount
         if status_bytes:
             system_status = Status(status_bytes)
-            current_active = system_status.active
 
-            if current_active != last_emergency_active:
+            current_active = system_status.active
+            current_night_mode = system_status.night_mode
+
+            if last_emergency_active is None or last_night_mode is None:
+                last_emergency_active = current_active
+                last_night_mode = current_night_mode
+                time.sleep(status_cooldown)
+                continue 
+
+            if current_active in [0, 1] and current_active != last_emergency_active:
                 if current_active == 1:
                     sig_group = system_status.signal_group
                     inter_id = system_status.intersection_id
                     
-                    print(f"\n[INFO] Veículo de emergência detectado! Liberando sinal {sig_group} no cruzamento. {inter_id}")
+                    print(f"\n[INFO] Veículo de emergência detectado. Liberando sinal {sig_group} no cruzamento {inter_id}")
                     
                     cmd = f'EMERGENCY_ON:{sig_group}\n'
-                    
-                    if inter_id in [0, 1]:
-                        send_command('cruzamento_1', cmd)
-                    if inter_id in [0, 2]:
-                        send_command('cruzamento_2', cmd)
-                else:
+                    if inter_id in [0, 1]: send_command('cruzamento_1', cmd)
+                    if inter_id in [0, 2]: send_command('cruzamento_2', cmd)
+                        
+                elif current_active == 0:
                     print("\n[INFO] Emergência encerrada. Retornando operação normal...")
                     cmd = 'EMERGENCY_OFF\n'
                     send_command('cruzamento_1', cmd)
                     send_command('cruzamento_2', cmd)
                     
                 last_emergency_active = current_active
+                
+            if current_night_mode in [0, 1] and current_night_mode != last_night_mode:
+                if current_night_mode == 1:
+                    print("\n[INFO] MODBUS - Modo noturno ativado")
+                    send_command('cruzamento_1', 'NIGHT_MODE_ON\n')
+                    send_command('cruzamento_2', 'NIGHT_MODE_ON\n')
+                elif current_night_mode == 0:
+                    print("\n[INFO] MODBUS - Modo Noturno desativado")
+                    send_command('cruzamento_1', 'NIGHT_MODE_OFF\n')
+                    send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
+                    
+                last_night_mode = current_night_mode
         else:
-            print('[ERRO]: Falha ao receber estado')
+            print('[ERRO] Falha ao receber estado')
     
         time.sleep(status_cooldown)
     
@@ -280,25 +325,27 @@ def start_server():
         status_thread = threading.Thread(target=modbus_handler, args=(0.25,), daemon=True)
         status_thread.start()
 
-        print(f'\nServidor Central ouvindo em [{HOST}:{PORT}]')
+        print(f'\n[INFO] Servidor Central ouvindo em [{HOST}:{PORT}]')
     
         # Thread para interface do usuário
         while True:
-            print('\n------- MENU -------')
+            print('\n--------------- MENU ---------------')
             print('1 - Visualizar informações de tráfego')
             print('2 - Modo Noturno')
             print('3 - Visualizar estado do sistema')
             print('0 - Sair')
+            print('\n------------------------------------')
             
             option = input('\nEscolha uma opção: ')
             
             if option == '1':
                 show_traffic_info()
             elif option == '2':
-                print('\n------- MODO NOTURNO -------')
+                print('\n--------------- MODO NOTURNO ---------------')
                 print('1 - Cruzamento 1')
                 print('2 - Cruzamento 2')
                 print('0 - Sair')
+                print('\n------------------------------------')
 
                 submenu_option = input('\nEscolha uma opção: ')
 
@@ -311,7 +358,7 @@ def start_server():
                     break
 
             elif option == '3':
-                print(f""" \
+                print(f"""\n--------------- ESTADO DO SISTEMA ---------------
 {'emergência ativa' if system_status.active == 1 else 'sem emergência'}
 road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
 direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
@@ -324,6 +371,7 @@ tempo de emergência: {system_status.elapsed_s_x10/10:.1f}s
 tempo maximo de emergência: {system_status.max_time_s_x10/10:.1f}s
 {'noite' if system_status.night_mode == 1 else 'dia'}
                 """)
+                print('\n------------------------------------') 
             elif option == '0':
                 print('\nEncerrando...')
                 break
@@ -331,7 +379,7 @@ tempo maximo de emergência: {system_status.max_time_s_x10/10:.1f}s
                 print('\nOpção inválida')
 
     except Exception as e:
-        print(f'\n[ERRO] : {e}')
+        print(f'\n[ERRO] {e}')
     finally:
         server_socket.close()
 

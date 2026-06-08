@@ -10,6 +10,8 @@ class SpeedSensor:
         self.vehicle_count = 0
         self.last_speed = 0
         self.on_infraction = on_infraction
+        self.sum_speed = 0
+        self.average_speed = 0
 
     def trigger_a(self, channel = None):
         self.start_time = time.perf_counter()
@@ -27,3 +29,6 @@ class SpeedSensor:
                 if self.last_speed > 60.0:
                     if self.on_infraction:
                         self.on_infraction(self.sensor_id, self.last_speed)
+
+                self.sum_speed += self.last_speed
+                self.average_speed = self.sum_speed / self.vehicle_count
