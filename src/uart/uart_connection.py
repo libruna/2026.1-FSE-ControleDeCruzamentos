@@ -3,6 +3,7 @@ from email import header
 import serial
 import time
 from config.modbus import MODBUS_ERRORS
+from .crc16 import check_crc
 
 VAR_LENGHT = 0
 
@@ -83,5 +84,8 @@ def get_response(ser, response_lenght: int, max_retries: int, modbus=False, has_
             break
         if attempt < max_retries - 1:
             time.sleep(0.1)
+
+    if not check_crc(response): # descarta o pacote
+        return b''
 
     return response

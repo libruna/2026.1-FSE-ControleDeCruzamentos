@@ -26,7 +26,7 @@ class TrafficLight:
                 self._change_state(time, 'yellow')
             elif state_duration >= self.green_mintime and self.waiting:
                 self._change_state(time, 'yellow')
-                print(f'travessia antecipada em {self.name}({state_duration:.2f}s)')
+                print(f'[INFO] travessia antecipada em {self.name}({state_duration:.2f}s)')
 
         elif self.state == 'yellow' and state_duration >= self.yellow_mintime:
             self._change_state(time, 'red')
@@ -41,4 +41,4 @@ class TrafficLight:
 
     def queue_pedestrian(self, canal = None):
         self.waiting = True
-        print(f'travessia requisitada em {self.name}')
+        print(f'[INFO] travessia requisitada em {self.name}')

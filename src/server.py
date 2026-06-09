@@ -206,7 +206,7 @@ class LicensePlateQuery:
         return self.completed and (not self.license_plate or self.confidence == -1)
 
     def __repr__(self):
-        return f'License Plate: {self.license_plate}, {self.confidence}%' if self.completed else f'INCOMPLETE LICENSE PLATE QUERY'
+        return f'License Plate: {self.license_plate}, {self.confidence}%' if self.completed else f'FAILED QUERY'
 
 def query_license_plate(camera_addr, speed):
     global license_plate_query_requests
@@ -238,6 +238,8 @@ def get_licence_plate(lpq : LicensePlateQuery):
 
         response2 = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=False)
 
+        if len(response2) < 5: continue
+
         if response2[4:5] == b'\x02': cam_status = 'ok'
         elif response2[4:5] == b'\x03': cam_status = 'err'
 
@@ -248,13 +250,20 @@ def get_licence_plate(lpq : LicensePlateQuery):
     response3 = get_response(ser, VAR_LENGHT, 1, modbus=True, has_subfunction=False)
 
     if cam_status == 'err':
-        print(f'[LPR ERRO]: {response3[-3]}')
-        lpq.complete_as_empty()
+        if len(response3) >= 3:
+            print(f'[ERRO]: câmera LPR retornou código de erro: {response3[-3]}')
+        else:
+            print(f'[ERRO]: falha na câmera LPR, ou na comunicação serial')
     else:
-        lpq.complete(response3[7:18])
+        if len(response3) >= 18:
+            lpq.complete(response3[7:18])
+        else:
+            print(f'[ERRO]: falha na comunicação com a câmera LPR')
 
-    pl4 = make_payload(b'\x01\x00\x01\x00\x02\x00\x00', modbus.MATRICULA)
+    pl4 = make_payload(b'\x01\x00\x01\x00\x02\x00\x00', modbus.MATRICULA) # reset trigget
     pl4 = wrap_modbus(camera_addr, modbus.WRITE, pl4)
+
+    ser.write(pl4)
 
     ser.readall()
 
@@ -273,10 +282,10 @@ def get_status():
 #    print(strhex(response))
 
     ser.close()
-    return response[2:-2] # exclui o modbus e crc
+    return response
 
 def log_infraction(lpq : LicensePlateQuery):
-    inf = f'{datetime.now()} - {modbus.get_sensor_from_camera(lpq.camera_addr)} - {lpq} - {lpq.speed}Km/h\n'
+    inf = f'{datetime.now()} - {modbus.get_sensor_from_camera(lpq.camera_addr)} - {lpq} - {lpq.speed}Km/h\n' 
     try:
         if path.exists(infractions_log_file):
             with open(infractions_log_file, 'a') as f:
@@ -303,8 +312,11 @@ def modbus_handler(status_cooldown : float):
             get_licence_plate(lpq)
             log_infraction(lpq)
 
-        status_bytes = get_status()[1:] # exclui o bytecount
-        if status_bytes:
+        status_bytes = get_status()
+        if not status_bytes:
+            print("[ERRO] falha ao obter estado do sistema")
+        else:
+            status_bytes = status_bytes[3:-2]
             system_status = Status(status_bytes)
 
             current_active = system_status.active
@@ -346,8 +358,6 @@ def modbus_handler(status_cooldown : float):
                     send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
                     
                 last_night_mode = current_night_mode
-        else:
-            print('[ERRO] Falha ao receber estado')
     
         time.sleep(status_cooldown)
     
