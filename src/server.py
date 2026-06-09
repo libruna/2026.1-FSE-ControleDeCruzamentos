@@ -11,9 +11,7 @@ from uart.parser import *
 
 from collections import deque
 
-sensor_data = {} # Guarda as contagens de veículos de cada sensor 
-vehicle_flux = {} # Guarda o fluxo de carros por minuto de cada sensor
-vehicle_average_speeds = {} # Guarda a velocidade média dos carros de cada sensor
+traffic_data = {} # Guarda as contagens por cruzamento 
 connected_clients = {} # Guarda os sockets
 license_plate_query_requests = deque() # fila de requisições lpr
 
@@ -61,8 +59,18 @@ def handle_client(client_socket, client_address):
                     parts = msg.split(':')
                     
                     if len(parts) == 4:
-                        # multa
-                        print(f"\n[INFO] Cruzamento {parts[1]} -> ({parts[2]}) detectou uma infração: carro a {parts[3]} km/h")
+                        cruz_num = parts[1]
+                        s_id = parts[2]
+                        speed = float(parts[3])
+
+                        client_key = f"cruzamento_{cruz_num}"
+
+                        print(f"\n[INFO] Cruzamento {client_key.upper()} -> ({s_id}) detectou uma infração: carro a {speed:.2f} km/h")
+
+                        if client_key not in traffic_data:
+                            traffic_data[client_key] = {'total_infractions': 0, 'sensors': {}}
+                        
+                        traffic_data[client_key]['total_infractions'] += 1
 
                         mapadd = {
                             'sensor_1': modbus.LPR1,
@@ -81,20 +89,23 @@ def handle_client(client_socket, client_address):
                     
                     if client_id not in connected_clients:
                         connected_clients[client_id] = client_socket
+
+                    if client_id not in traffic_data:
+                        traffic_data[client_id] = {'total_infractions': 0, 'sensors': {}}
+
+                    if s_id not in traffic_data[client_id]['sensors']:
+                        traffic_data[client_id]['sensors'][s_id] = {
+                            'count': 0,
+                            'avg_speed': 0.0,
+                            'flux_history': deque()
+                        }
                     
-                    if client_id not in sensor_data:
-                        sensor_data[client_id] = {}
-                        vehicle_flux[client_id] = {}
-                        vehicle_average_speeds[client_id] = {}
-                        
-                    sensor_data[client_id][s_id] = count_int
-                    vehicle_average_speeds[client_id][s_id] = speed_float
+                    sensor_node = traffic_data[client_id]['sensors'][s_id]
+                    sensor_node['count'] = count_int
+                    sensor_node['avg_speed'] = speed_float
                     
-                    if s_id not in vehicle_flux[client_id]:
-                        vehicle_flux[client_id][s_id] = deque()
-                        
                     now = time.time()
-                    queue = vehicle_flux[client_id][s_id]
+                    queue = sensor_node['flux_history']
                     queue.append((now, count_int))
                     
                     while queue and (now - queue[0][0]) > 60:
@@ -131,24 +142,29 @@ def send_command(client_id, command):
         print(f'\n[INFO] {client_id} não está conectado')
 
 def show_traffic_info():
-    print('\n------- Monitoramento -------')
+    print('\n======================== Monitoramento ========================')
 
-    if not sensor_data:
-        print('\n[INFO] Nenhum dado de cruzamento recebido até o momento')
+    if not traffic_data:
+        print('\nNenhum dado de cruzamento recebido até o momento.')
     else:
-        for client_id, sensors in sensor_data.items():
-            print(f'{client_id.upper()}')
-            for s_id, count in sensors.items():
-                queue = vehicle_flux[client_id].get(s_id, [])
+        for client_id, intersection_node in traffic_data.items():
+            print(f'\n{client_id.upper()}')
+            
+            for s_id, sensor_node in intersection_node['sensors'].items():
+                count = sensor_node['count']
+                avg_speed = sensor_node['avg_speed']
+                queue = sensor_node['flux_history']
                 
                 if len(queue) >= 2:
                     flux_per_minute = queue[-1][1] - queue[0][1]
                 else:
                     flux_per_minute = 0                
                 
-                avg_speed = vehicle_average_speeds.get(client_id, {}).get(s_id, 0.0)
-                
-                print(f'   - {s_id}: {count} carros no total | {flux_per_minute} carros/min  | VM = {avg_speed:.1f} km/h')
+                print(f'   - {s_id}: {count} carros no total | {flux_per_minute} carros/min  | Vm = {avg_speed:.1f} km/h')
+            
+            total_infractions = intersection_node['total_infractions']
+            print(f'   -> Total de infrações de velocidade = {total_infractions}')
+    print('=================================================================\n')
 
 class LicensePlateQuery:
     def __init__(self, camera_addr):
@@ -289,11 +305,11 @@ def modbus_handler(status_cooldown : float):
                 
             if current_night_mode in [0, 1] and current_night_mode != last_night_mode:
                 if current_night_mode == 1:
-                    print("\n[INFO] MODBUS - Modo noturno ativado")
+                    print("\n[INFO] MODBUS -> Modo noturno ativado")
                     send_command('cruzamento_1', 'NIGHT_MODE_ON\n')
                     send_command('cruzamento_2', 'NIGHT_MODE_ON\n')
                 elif current_night_mode == 0:
-                    print("\n[INFO] MODBUS - Modo Noturno desativado")
+                    print("\n[INFO] MODBUS -> Modo noturno desativado")
                     send_command('cruzamento_1', 'NIGHT_MODE_OFF\n')
                     send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
                     
@@ -329,23 +345,23 @@ def start_server():
     
         # Thread para interface do usuário
         while True:
-            print('\n--------------- MENU ---------------')
+            print('\n================ MENU ================')
             print('1 - Visualizar informações de tráfego')
-            print('2 - Modo Noturno')
+            print('2 - Ativar modo noturno')
             print('3 - Visualizar estado do sistema')
             print('0 - Sair')
-            print('\n------------------------------------')
+            print('=======================================\n')
             
             option = input('\nEscolha uma opção: ')
             
             if option == '1':
                 show_traffic_info()
             elif option == '2':
-                print('\n--------------- MODO NOTURNO ---------------')
+                print('\n========== MODO NOTURNO ==========')
                 print('1 - Cruzamento 1')
                 print('2 - Cruzamento 2')
                 print('0 - Sair')
-                print('\n------------------------------------')
+                print('====================================\n')
 
                 submenu_option = input('\nEscolha uma opção: ')
 
@@ -358,7 +374,7 @@ def start_server():
                     break
 
             elif option == '3':
-                print(f"""\n--------------- ESTADO DO SISTEMA ---------------
+                print(f"""\n============== ESTADO DO SISTEMA ==============
 {'emergência ativa' if system_status.active == 1 else 'sem emergência'}
 road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
 direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
@@ -371,7 +387,7 @@ tempo de emergência: {system_status.elapsed_s_x10/10:.1f}s
 tempo maximo de emergência: {system_status.max_time_s_x10/10:.1f}s
 {'noite' if system_status.night_mode == 1 else 'dia'}
                 """)
-                print('\n------------------------------------') 
+                print('\n======================================================\n') 
             elif option == '0':
                 print('\nEncerrando...')
                 break
