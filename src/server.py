@@ -1,5 +1,6 @@
 import socket
 import threading
+import json
 
 from config.network import HOST, PORT
 
@@ -20,6 +21,7 @@ license_plate_query_requests = deque() # fila de requisições lpr
 
 log_folder = path.join(get_project_root(), 'log')
 infractions_log_file = path.join(log_folder, 'infractions.txt')
+status_file = path.join(log_folder, 'SYSTEM_STATUS')
 
 class Status:
     def __init__(self, bytes):
@@ -57,6 +59,20 @@ class Status:
             self.max_time_s_x10 = bytes_to_int(b'\x00\x00' + bytes[18:20], True)
         if lenght >= 22:
             self.night_mode = bytes_to_int(b'\x00\x00' + bytes[20:22], True)
+    
+    def __repr__(self):
+        return f"""\
+{'emergência ativa' if self.active == 1 else 'sem emergência'}
+road: {'principal' if self.road == 1 else 'auxiliar' if self.road == 2 else 'nenhuma'}
+direction: {'leste' if self.direction == 1 else 'oeste' if self.direction == 2 else 'norte' if self.direction == 3 else 'sul' if self.direction == 4 else 'nenhuma'}
+intersection_id: {'ambos / n/' if self.intersection_id == 0 else '1' if self.intersection_id == 1 else '2'}
+vehicle_type: {'nenhum' if self.vehicle_type == 0 else 'ambulância' if self.vehicle_type == 1 else 'bombeiros' if self.vehicle_type == 2 else 'policia'}
+signal_group: {self.signal_group}
+emergência: {'OK' if self.timed_out == 0 else 'Falha'}
+emergências não atendidas: {self.unattended_count}
+tempo de emergência: {self.elapsed_s_x10/10:.1f}s
+tempo maximo de emergência: {self.max_time_s_x10/10:.1f}s
+{'noite' if self.night_mode == 1 else 'dia'}"""
 
 def handle_client(client_socket, client_address):
     client_id_local = None
@@ -363,6 +379,20 @@ def modbus_handler(status_cooldown : float):
     
 
 def start_server():
+    global system_status
+
+    if path.exists(status_file):
+        print('[INFO] Carregando estado anterior')
+        try:
+            with open(status_file, 'r') as f:
+                l = f.readline()
+                system_status = json.loads(l)
+        except Exception as e:
+            print(f'[ERRO] Falha ao carregar estado anterior + {e}')
+    else:
+        print(f'[ERRO] O arquivo de estado não foi encontrado')
+        
+
     server_socket = socket.socket(
         socket.AF_INET,
         socket.SOCK_STREAM
@@ -416,29 +446,27 @@ def start_server():
                     break
 
             elif option == '3':
-                print(f"""\n============== ESTADO DO SISTEMA ==============
-{'emergência ativa' if system_status.active == 1 else 'sem emergência'}
-road: {'principal' if system_status.road == 1 else 'auxiliar' if system_status.road == 2 else 'nenhuma'}
-direction: {'leste' if system_status.direction == 1 else 'oeste' if system_status.direction == 2 else 'norte' if system_status.direction == 3 else 'sul' if system_status.direction == 4 else 'nenhuma'}
-intersection_id: {'ambos / n/' if system_status.intersection_id == 0 else '1' if system_status.intersection_id == 1 else '2'}
-vehicle_type: {'nenhum' if system_status.vehicle_type == 0 else 'ambulância' if system_status.vehicle_type == 1 else 'bombeiros' if system_status.vehicle_type == 2 else 'policia'}
-signal_group: {system_status.signal_group}
-emergência: {'OK' if system_status.timed_out == 0 else 'Falha'}
-emergências não atendidas: {system_status.unattended_count}
-tempo de emergência: {system_status.elapsed_s_x10/10:.1f}s
-tempo maximo de emergência: {system_status.max_time_s_x10/10:.1f}s
-{'noite' if system_status.night_mode == 1 else 'dia'}
-                """)
+                print(f'\n============== ESTADO DO SISTEMA ==============')
+                print(system_status)
                 print('\n======================================================\n') 
             elif option == '0':
                 print('\nEncerrando...')
                 break
             else:
                 print('\nOpção inválida')
-
+    except KeyboardInterrupt:
+        print(f'\nEncerrando...')
     except Exception as e:
         print(f'\n[ERRO] {e}')
     finally:
+        print(f'Salvando estado atual para \"' + status_file + '\"')
+        if path.isdir(log_folder):
+            with open(status_file, 'w') as f:
+                f.write(json.dumps(system_status.__dict__))
+        else:
+            mkdir(log_folder)
+            with open(status_file, 'w') as f:
+                f.write(json.dumps(system_status.__dict__))
         server_socket.close()
 
 if __name__ == '__main__':
