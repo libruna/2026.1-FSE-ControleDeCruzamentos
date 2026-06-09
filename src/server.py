@@ -8,15 +8,32 @@ from uart.uart_connection import *
 from uart.protocol_simple import make_payload
 from uart.protocol_modbus import wrap_modbus
 from uart.parser import *
+from utils import *
 
+from os import path, mkdir
 from collections import deque
+from datetime import datetime
 
 traffic_data = {} # Guarda as contagens por cruzamento 
 connected_clients = {} # Guarda os sockets
 license_plate_query_requests = deque() # fila de requisições lpr
 
+log_folder = path.join(get_project_root(), 'log')
+infractions_log_file = path.join(log_folder, 'infractions.txt')
+
 class Status:
     def __init__(self, bytes):
+        self.active = 0
+        self.road = 0
+        self.direction = 0
+        self.intersection_id = 0
+        self.vehicle_type = 0
+        self.signal_group = 0
+        self.timed_out = 0
+        self.unattended_count = 0
+        self.elapsed_s_x10 = 0
+        self.max_time_s_x10 = 0
+        self.night_mode = 0
         lenght = len(bytes)
         if lenght >= 2:
             self.active = bytes_to_int(b'\x00\x00' + bytes[0:2], True)
@@ -78,8 +95,8 @@ def handle_client(client_socket, client_address):
                             'sensor_3': modbus.LPR3,
                             'sensor_4': modbus.LPR4
                         }
-                        th = threading.Thread(target=query_license_plate, args=(mapadd[parts[2]],),daemon=True)
-                        th.start()
+                        query_license_plate(modbus.get_camera_from_sensor(parts[2]),parts[3])
+                        
                 
                 elif msg.count(':') == 3:
                     client_id, s_id, count, avg_speed = msg.split(':')
@@ -167,8 +184,9 @@ def show_traffic_info():
     print('=================================================================\n')
 
 class LicensePlateQuery:
-    def __init__(self, camera_addr):
+    def __init__(self, camera_addr, speed):
         self.camera_addr = camera_addr
+        self.speed = speed
         self.completed = False
         self.license_plate = ''
         self.confidence = -1
@@ -190,12 +208,10 @@ class LicensePlateQuery:
     def __repr__(self):
         return f'License Plate: {self.license_plate}, {self.confidence}%' if self.completed else f'INCOMPLETE LICENSE PLATE QUERY'
 
-def query_license_plate(camera_addr):
+def query_license_plate(camera_addr, speed):
     global license_plate_query_requests
-    lpq = LicensePlateQuery(camera_addr)
+    lpq = LicensePlateQuery(camera_addr, speed)
     license_plate_query_requests.append(lpq)
-    while not lpq.completed:
-        pass
 
 def get_licence_plate(lpq : LicensePlateQuery):
     """
@@ -259,6 +275,22 @@ def get_status():
     ser.close()
     return response[2:-2] # exclui o modbus e crc
 
+def log_infraction(lpq : LicensePlateQuery):
+    inf = f'{datetime.now()} - {modbus.get_sensor_from_camera(lpq.camera_addr)} - {lpq} - {lpq.speed}Km/h\n'
+    try:
+        if path.exists(infractions_log_file):
+            with open(infractions_log_file, 'a') as f:
+                f.write(inf)
+        else:
+            if not path.isdir(log_folder):
+                mkdir(log_folder)
+            with open(infractions_log_file, 'w') as f:
+                f.write(inf)
+    except Exception as e:
+        print(f"[ERRO]: Failure to log infraction: {e}")
+    print('[INFRACTION]: ' + inf)
+
+
 def modbus_handler(status_cooldown : float):
     global system_status
 
@@ -269,7 +301,7 @@ def modbus_handler(status_cooldown : float):
         if license_plate_query_requests:
             lpq = license_plate_query_requests.popleft()
             get_licence_plate(lpq)
-            print(lpq)
+            log_infraction(lpq)
 
         status_bytes = get_status()[1:] # exclui o bytecount
         if status_bytes:

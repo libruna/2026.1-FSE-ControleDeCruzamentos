@@ -22,3 +22,19 @@ MODBUS_ERRORS = { # https://docs.aveva.com/bundle/sp-cdp-drivers/page/192126.htm
     0x0A: 'GATEWAY PATH UNAVAILABLE',
     0x0B: 'GATEWAY TARGET DEVICE FAILED TO RESPOND'
 }
+
+def get_camera_from_sensor(sensor):
+    return{
+            'sensor_1': LPR1,
+            'sensor_2': LPR2,
+            'sensor_3': LPR3,
+            'sensor_4': LPR4
+        }[sensor]
+
+def get_sensor_from_camera(camera):
+    return{
+            LPR1: 'sensor_1',
+            LPR2: 'sensor_2',
+            LPR3: 'sensor_3',
+            LPR4: 'sensor_4'
+        }[camera]
