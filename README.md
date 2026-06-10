@@ -56,7 +56,7 @@ sudo apt-get update
 sudo apt-get install python3-pip python3-dev
 ```
 
-#### 2) Instale a biblioteca RPi.GPIO:
+#### 2) Instale a dependências:
 
 ```
 pip install -r requirements.txt
@@ -64,10 +64,15 @@ pip install -r requirements.txt
 
 ### Execução
 
-Para iniciar (os dois cruzamentos em segundo plano e o Servidor Central em primeiro plano), execute o comando abaixo na raiz do projeto:
+Para iniciar (os dois cruzamentos em segundo plano e o Servidor Central em primeiro plano) e guardar logs do console, execute o comando abaixo na raiz do projeto:
+
+```bash
+./run.sh
+```
+Caso prefira, o comando abaixo inicia sem fazer log do console.
 
 ```
-python main.py 1 & python main.py 2 & python server.py
+python3 src/main.py 1 & python3 src/main.py 2 & python3 src/server.py
 ```
 
 ### Como testar as versões anteriores
