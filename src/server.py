@@ -74,6 +74,8 @@ tempo de emergência: {self.elapsed_s_x10/10:.1f}s
 tempo maximo de emergência: {self.max_time_s_x10/10:.1f}s
 {'noite' if self.night_mode == 1 else 'dia'}"""
 
+system_status : Status
+
 def handle_client(client_socket, client_address):
     client_id_local = None
     try:

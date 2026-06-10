@@ -1,7 +1,7 @@
 #!/bin/bash
 
 i=1
-while [ -e log/log-$i ]; do
+while [ -e log/log-$i.txt ]; do
     ((i++))
 done
 
