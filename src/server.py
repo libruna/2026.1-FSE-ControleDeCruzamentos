@@ -8,6 +8,7 @@ import config.modbus_lpr as modbus
 from uart.uart_connection import *
 from uart.protocol_simple import make_payload
 from uart.protocol_modbus import wrap_modbus
+from config.road import ROAD_MAP
 from uart.parser import *
 from utils import *
 
@@ -22,6 +23,7 @@ license_plate_query_requests = deque() # fila de requisições lpr
 log_folder = path.join(get_project_root(), 'log')
 infractions_log_file = path.join(log_folder, 'infractions.txt')
 status_file = path.join(log_folder, 'SYSTEM_STATUS')
+traffic_log_file = path.join(log_folder, 'traffic_history.txt') # histórico de veículos por cruzamento e via
 
 class Status:
     def __init__(self, bytes):
@@ -113,9 +115,8 @@ def handle_client(client_socket, client_address):
                             'sensor_3': modbus.LPR3,
                             'sensor_4': modbus.LPR4
                         }
-                        query_license_plate(modbus.get_camera_from_sensor(parts[2]),parts[3])
+                        query_license_plate(cruz_num, s_id, modbus.get_camera_from_sensor(parts[2]), parts[3])
                         
-                
                 elif msg.count(':') == 3:
                     client_id, s_id, count, avg_speed = msg.split(':')
                     client_id_local = client_id
@@ -136,12 +137,19 @@ def handle_client(client_socket, client_address):
                         }
                     
                     sensor_node = traffic_data[client_id]['sensors'][s_id]
+
+                    old_count = sensor_node['count']
                     sensor_node['count'] = count_int
                     sensor_node['avg_speed'] = speed_float
                     
                     now = time.time()
                     queue = sensor_node['flux_history']
                     queue.append((now, count_int))
+
+                    if old_count > 0 and count_int > old_count:
+                        new_vehicles = count_int - old_count
+                        for _ in range(new_vehicles):
+                            log_vehicle_history(client_id, s_id)
                     
                     while queue and (now - queue[0][0]) > 60:
                         queue.popleft()
@@ -176,33 +184,11 @@ def send_command(client_id, command):
     else:
         print(f'\n[INFO] {client_id} não está conectado')
 
-def show_traffic_info():
-    print('\n======================== Monitoramento ========================')
-
-    if not traffic_data:
-        print('\nNenhum dado de cruzamento recebido até o momento.')
-    else:
-        for client_id, intersection_node in traffic_data.items():
-            print(f'\n{client_id.upper()}')
-            
-            for s_id, sensor_node in intersection_node['sensors'].items():
-                count = sensor_node['count']
-                avg_speed = sensor_node['avg_speed']
-                queue = sensor_node['flux_history']
-                
-                if len(queue) >= 2:
-                    flux_per_minute = queue[-1][1] - queue[0][1]
-                else:
-                    flux_per_minute = 0                
-                
-                print(f'   - {s_id}: {count} carros no total | {flux_per_minute} carros/min  | Vm = {avg_speed:.1f} km/h')
-            
-            total_infractions = intersection_node['total_infractions']
-            print(f'   -> Total de infrações de velocidade = {total_infractions}')
-    print('=================================================================\n')
-
 class LicensePlateQuery:
-    def __init__(self, camera_addr, speed):
+    def __init__(self, cruz_num, s_id, camera_addr, speed):
+        self.timestamp = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        self.cruz_num = cruz_num
+        self.s_id = s_id
         self.camera_addr = camera_addr
         self.speed = speed
         self.completed = False
@@ -226,9 +212,9 @@ class LicensePlateQuery:
     def __repr__(self):
         return f'License Plate: {self.license_plate}, {self.confidence}%' if self.completed else f'FAILED QUERY'
 
-def query_license_plate(camera_addr, speed):
+def query_license_plate(cruz_num, s_id, camera_addr, speed):
     global license_plate_query_requests
-    lpq = LicensePlateQuery(camera_addr, speed)
+    lpq = LicensePlateQuery(cruz_num, s_id, camera_addr, speed)
     license_plate_query_requests.append(lpq)
 
 def get_licence_plate(lpq : LicensePlateQuery):
@@ -317,6 +303,23 @@ def log_infraction(lpq : LicensePlateQuery):
         print(f"[ERRO]: Failure to log infraction: {e}")
     print('[INFRACTION]: ' + inf)
 
+def log_vehicle_history(client_id, s_id):
+    print(f'\n[INFO] Registrando passagem de veículo detectada no {s_id} do {client_id}...')
+    intersection_name = ROAD_MAP.get(client_id, {}).get(s_id, s_id)
+    
+    log_entry = f'{datetime.now()} - {client_id.upper()} - {intersection_name} - Veículo detectado\n'
+    
+    try:
+        if path.exists(traffic_log_file):
+            with open(traffic_log_file, 'a') as f:
+                f.write(log_entry)
+        else:
+            if not path.isdir(log_folder):
+                mkdir(log_folder)
+            with open(traffic_log_file, 'w') as f:
+                f.write(log_entry)
+    except Exception as e:
+        print(f"[ERRO]: Falha ao salvar histórico de passagens de veículos: {e}")
 
 def modbus_handler(status_cooldown : float):
     global system_status
@@ -378,7 +381,87 @@ def modbus_handler(status_cooldown : float):
                 last_night_mode = current_night_mode
     
         time.sleep(status_cooldown)
-    
+
+def show_traffic_info():
+    print('\n======================== Monitoramento ========================')
+
+    if not traffic_data:
+        print('\nNenhum dado de cruzamento recebido até o momento.')
+    else:
+        for client_id, intersection_node in traffic_data.items():
+            print(f'\n{client_id.upper()}')
+            
+            for s_id, sensor_node in intersection_node['sensors'].items():
+                count = sensor_node['count']
+                avg_speed = sensor_node['avg_speed']
+                queue = sensor_node['flux_history']
+                
+                if len(queue) >= 2:
+                    flux_per_minute = queue[-1][1] - queue[0][1]
+                else:
+                    flux_per_minute = 0                
+                
+                print(f'   - {s_id}: {count} carros no total | {flux_per_minute} carros/min  | Vm = {avg_speed:.1f} km/h')
+            
+            total_infractions = intersection_node['total_infractions']
+            print(f'   -> Total de infrações de velocidade = {total_infractions}')
+    print('=================================================================\n')
+
+def manage_night_mode():
+    while True:
+        print('\n=============== MODO NOTURNO ===============')
+        print('1 - ATIVAR no Cruzamento 1')
+        print('2 - DESATIVAR no Cruzamento 1')
+        print('3 - ATIVAR no Cruzamento 2')
+        print('4 - DESATIVAR no Cruzamento 2')
+        print('0 - Voltar')
+        print('==============================================\n')
+
+        option = input('Escolha uma opção: ')
+        
+        if option == '1':
+            send_command('cruzamento_1', 'NIGHT_MODE_ON\n')
+        elif option == '2':
+            send_command('cruzamento_1', 'NIGHT_MODE_OFF\n')
+        elif option == '3':
+            send_command('cruzamento_2', 'NIGHT_MODE_ON\n')
+        elif option == '4':
+            send_command('cruzamento_2', 'NIGHT_MODE_OFF\n')
+        elif option == '0':
+            break
+        else:
+            print('\n[ERRO] Opção inválida')
+
+def manual_control_traffic_lights():
+    while True:
+        print('\n=============== CONTROLE MANUAL ===============')
+        print('0 - Estado 0 (Amarelo  | Amarelo) -> ! Modo noturno !')
+        print('1 - Estado 1 (Verde    | Vermelho)')
+        print('2 - Estado 2 (Amarelo  | Vermelho)')
+        print('3 - Estado 3 (Amarelo  | Vermelho)')
+        print('4 - Estado 4 (Vermelho | Vermelho)')
+        print('5 - Estado 5 (Vermelho | Verde)')
+        print('6 - Estado 6 (Vermelho | Amarelo)')
+        print('7 - Estado 7 (Vermelho | Amarelo)')
+        print('9 - Voltar')
+        print('==================================================\n')
+        
+        option = input('\nEscolha uma opção: ')
+        
+        if option == '0':
+            manage_night_mode()  
+        elif option in [str(i) for i in range(8)]:
+            cmd = f'MANUAL_STATE:{option}\n'
+            send_command('cruzamento_1', cmd)
+            send_command('cruzamento_2', cmd)
+            print(f'\n[MODO MANUAL] Ativado -> Alterando os cruzamentos para o estado {option}')
+        elif option == '9':
+            send_command('cruzamento_1', 'MANUAL_OFF\n')
+            send_command('cruzamento_2', 'MANUAL_OFF\n')
+            print('\n[MODO MANUAL] Desativado -> Sistema retornado para modo automático')
+            break
+        else:
+            print('\n[ERRO] Opção inválida')
 
 def start_server():
     global system_status
@@ -421,8 +504,8 @@ def start_server():
             while True:
                 print('\n================ MENU ================')
                 print('1 - Visualizar informações de tráfego')
-                print('2 - Ativar modo noturno')
-                print('3 - Visualizar estado do sistema')
+                print('2 - Visualizar estado do sistema')
+                print('3 - Controle manual de estados')
                 print('0 - Sair')
                 print('=======================================\n')
                 
@@ -431,26 +514,11 @@ def start_server():
                 if option == '1':
                     show_traffic_info()
                 elif option == '2':
-                    print('\n========== MODO NOTURNO ==========')
-                    print('1 - Cruzamento 1')
-                    print('2 - Cruzamento 2')
-                    print('0 - Sair')
-                    print('====================================\n')
-
-                    submenu_option = input('\nEscolha uma opção: ')
-
-                    if submenu_option == '1':
-                        send_command('cruzamento_1', 'NIGHT_MODE_ON')
-                    elif submenu_option == '2':
-                        send_command('cruzamento_2', 'NIGHT_MODE_ON')
-                    elif submenu_option == '0':
-                        print('\nEncerrando...')
-                        break
-
-                elif option == '3':
                     print(f'\n============== ESTADO DO SISTEMA ==============')
                     print(system_status)
                     print('\n======================================================\n') 
+                elif option == '3':
+                    manual_control_traffic_lights()
                 elif option == '0':
                     print('\nEncerrando...')
                     break

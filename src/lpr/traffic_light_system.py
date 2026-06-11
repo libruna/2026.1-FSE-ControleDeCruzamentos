@@ -116,6 +116,7 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
     time = 0
     emergency_mode = 0
     night_mode = False
+    manual_mode = None
 
     try:
         while True:
@@ -141,6 +142,13 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
                     elif msg == 'EMERGENCY_OFF':
                         emergency_mode = 0
                         print("\n[INFO] Modo de emergência desativado")
+                    elif msg.startswith('MANUAL_STATE:'):
+                        _, state_num = msg.split(':')
+                        manual_mode = int(state_num) 
+                        print(f"\n[MODO MANUAL] Servidor Central solicitou alteração dos cruzamentos para o estado {manual_mode}")
+                    elif msg == 'MANUAL_OFF':
+                        manual_mode = None
+                        print("\n[MODO MANUAL] Servidor Central solicitou retorno ao modo automático")
             except BlockingIOError:
                 pass
             except Exception as e:
@@ -151,6 +159,12 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
                 output = [True, False, False]
             elif emergency_mode == 2:
                 output = [True, False, True]
+            elif manual_mode is not None:
+                output = [
+                    bool(manual_mode & 1), 
+                    bool(manual_mode & 2),
+                    bool(manual_mode & 4) 
+                ]
             else:
                 output = get_state(principal.state, cruzamento.state, night_mode, time)
 
@@ -172,15 +186,15 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
 
                 # Mensagens no formato: 'cruzamento_A:sensor_B:quantidade'
                 for sensor_id, sensor_obj in sensors.items():
-                        count = sensor_obj.vehicle_count
-                        avg_speed = getattr(sensor_obj, 'average_speed', 0.0)
-                        
-                        message = f'{client_id}:{sensor_id}:{count}:{avg_speed:.2f}\n'
-                        
-                        try:
-                            client.send(message.encode('utf-8'))
-                        except Exception as e:
-                            pass
+                    count = sensor_obj.vehicle_count
+                    avg_speed = getattr(sensor_obj, 'average_speed', 0.0)
+                    
+                    message = f'{client_id}:{sensor_id}:{count}:{avg_speed:.2f}\n'
+                    
+                    try:
+                        client.send(message.encode('utf-8'))
+                    except Exception as e:
+                        pass
 
             sleep(0.01)
             time += 0.01
