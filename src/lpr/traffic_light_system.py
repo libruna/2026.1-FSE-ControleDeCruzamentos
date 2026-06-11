@@ -26,7 +26,7 @@ def get_state(estado_principal, estado_cruzamento, noite, time):
         output[1] = True
         output[2] = True
     else:
-        print('[ERRO] ESTADO INVALIDO')
+        print(f'[ERRO] ESTADO INVALIDO: principal-{estado_principal}, cruzamento-{estado_cruzamento}')
     
     return output
 
@@ -119,9 +119,6 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
 
     try:
         while True:
-            cruzamento.execute(time, principal.state != 'red')
-            principal.execute(time, cruzamento.state != 'red')
-
             data = None
             try:
                 data = client.recv(1024).decode('utf-8')
@@ -147,12 +144,15 @@ def traffic_light_system(name, bit0, bit1, bit2, botao_principal, botao_cruzamen
                 print(f"\n[ERRO] Falha na leitura de dados: {e}")
                 pass
 
-            if emergency_mode == 1:
-                output = [True, False, False]
-            elif emergency_mode == 2:
-                output = [True, False, True]
-            else:
-                output = get_state(principal.state, cruzamento.state, night_mode, time)
+            cruzamento.execute(time, principal.state != 'red', force=('' if emergency_mode == 0 else ('close' if emergency_mode == 1 else 'open')))
+            principal.execute(time, cruzamento.state != 'red', force=('' if emergency_mode == 0 else ('open' if emergency_mode == 1 else 'close')))
+
+            # if emergency_mode == 1:
+            #     output = [True, False, False]
+            # elif emergency_mode == 2:
+            #     output = [True, False, True]
+            # else:
+            output = get_state(principal.state, cruzamento.state, night_mode, time)
 
             gpio.output(bit0, output[0])
             gpio.output(bit1, output[1])
