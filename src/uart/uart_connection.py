@@ -35,21 +35,6 @@ def get_response(ser, response_lenght: int, max_retries: int, modbus=False, has_
                 if len(header) < 2:
                     raise serial.SerialTimeoutException('Timeout ao receber resposta MODBUS')
                 
-                function_code = header[1]
-                
-                if function_code & 0x80:
-                    rest = ser.read(2)
-                    response = header + rest
-
-                    print(f'Pacote recebido: {response}')
-
-                    exception_code = response[2]
-
-                    raise Exception(
-                        f'ERRO MODBUS '
-                        f'[{exception_code:#04x}]: '
-                        f'{MODBUS_ERRORS.get(exception_code, "UNKNOWN ERROR")}'
-                    )
 
                 if response_lenght <= VAR_LENGHT:
                     rest = ser.read(2 if has_subfunction else 1)
@@ -69,10 +54,10 @@ def get_response(ser, response_lenght: int, max_retries: int, modbus=False, has_
                     response = ser.read(response_lenght)
 
         except serial.SerialTimeoutException:
-            print(f'ERRO: Timeout')
+            print(f'[ERRO] Modbus timeout')
             response = b''
         except serial.SerialException as e:
-            print(f'ERRO: Não foi possível se comunicar com a porta serial, tentando novamente... {attempt + 1}: {e}')
+            print(f'[ERRO]: Não foi possível se comunicar com a porta serial, tentando novamente... {attempt + 1}: {e}')
             try:
                 ser.close()
                 time.sleep(0.5)
@@ -87,5 +72,20 @@ def get_response(ser, response_lenght: int, max_retries: int, modbus=False, has_
 
     if not check_crc(response): # descarta o pacote
         return b''
+
+    function_code = response[1]
+    if function_code & 0x80:
+        rest = ser.read(2)
+        response = header + rest
+
+        print(f'Pacote recebido: {response}')
+
+        exception_code = response[2]
+
+        print(
+            f'ERRO MODBUS '+
+            f'[{exception_code:#04x}]: '+
+            f'{MODBUS_ERRORS.get(exception_code, "UNKNOWN ERROR")}'
+        )
 
     return response

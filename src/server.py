@@ -400,76 +400,80 @@ def start_server():
         socket.SOCK_STREAM
     )
 
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    while True:
+        try:
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind((HOST, PORT))
+            server_socket.listen()
 
-    try:
-        server_socket.bind((HOST, PORT))
-        server_socket.listen()
+            # Thread que fica escutando a rede
+            accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
+            accept_thread.daemon = True
+            accept_thread.start()
 
-        # Thread que fica escutando a rede
-        accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
-        accept_thread.daemon = True
-        accept_thread.start()
+            # Thread que recebe o estado do sistema e maneja o modbus
+            status_thread = threading.Thread(target=modbus_handler, args=(0.25,), daemon=True)
+            status_thread.start()
 
-        # Thread que recebe o estado do sistema e maneja o modbus
-        status_thread = threading.Thread(target=modbus_handler, args=(0.25,), daemon=True)
-        status_thread.start()
-
-        print(f'\n[INFO] Servidor Central ouvindo em [{HOST}:{PORT}]')
-    
-        # Thread para interface do usuário
-        while True:
-            print('\n================ MENU ================')
-            print('1 - Visualizar informações de tráfego')
-            print('2 - Ativar modo noturno')
-            print('3 - Visualizar estado do sistema')
-            print('0 - Sair')
-            print('=======================================\n')
-            
-            option = input('\nEscolha uma opção: ')
-            
-            if option == '1':
-                show_traffic_info()
-            elif option == '2':
-                print('\n========== MODO NOTURNO ==========')
-                print('1 - Cruzamento 1')
-                print('2 - Cruzamento 2')
+            print(f'\n[INFO] Servidor Central ouvindo em [{HOST}:{PORT}]')
+        
+            # Thread para interface do usuário
+            while True:
+                print('\n================ MENU ================')
+                print('1 - Visualizar informações de tráfego')
+                print('2 - Ativar modo noturno')
+                print('3 - Visualizar estado do sistema')
                 print('0 - Sair')
-                print('====================================\n')
+                print('=======================================\n')
+                
+                option = input('\nEscolha uma opção: ')
+                
+                if option == '1':
+                    show_traffic_info()
+                elif option == '2':
+                    print('\n========== MODO NOTURNO ==========')
+                    print('1 - Cruzamento 1')
+                    print('2 - Cruzamento 2')
+                    print('0 - Sair')
+                    print('====================================\n')
 
-                submenu_option = input('\nEscolha uma opção: ')
+                    submenu_option = input('\nEscolha uma opção: ')
 
-                if submenu_option == '1':
-                    send_command('cruzamento_1', 'NIGHT_MODE_ON')
-                elif submenu_option == '2':
-                    send_command('cruzamento_2', 'NIGHT_MODE_ON')
-                elif submenu_option == '0':
+                    if submenu_option == '1':
+                        send_command('cruzamento_1', 'NIGHT_MODE_ON')
+                    elif submenu_option == '2':
+                        send_command('cruzamento_2', 'NIGHT_MODE_ON')
+                    elif submenu_option == '0':
+                        print('\nEncerrando...')
+                        break
+
+                elif option == '3':
+                    print(f'\n============== ESTADO DO SISTEMA ==============')
+                    print(system_status)
+                    print('\n======================================================\n') 
+                elif option == '0':
                     print('\nEncerrando...')
                     break
-
-            elif option == '3':
-                print(f'\n============== ESTADO DO SISTEMA ==============')
-                print(system_status)
-                print('\n======================================================\n') 
-            elif option == '0':
-                print('\nEncerrando...')
-                break
-            else:
-                print('\nOpção inválida')
-    except KeyboardInterrupt:
-        print(f'\nEncerrando...')
-    except Exception as e:
-        print(f'\n[ERRO] {e}')
-    finally:
-        print(f'Salvando estado atual para \"' + status_file + '\"')
-        if path.isdir(log_folder):
-            with open(status_file, 'w') as f:
-                f.write(json.dumps(system_status.__dict__))
+                else:
+                    print('\nOpção inválida')
+        except KeyboardInterrupt:
+            print(f'\nEncerrando...')
+            break
+        except Exception as e:
+            print(f'\n[FATAL] {e}')
+            print(f'[INFO] Tentando reconexão...')
         else:
-            mkdir(log_folder)
-            with open(status_file, 'w') as f:
-                f.write(json.dumps(system_status.__dict__))
-        server_socket.close()
+            break
+        finally:
+            print(f'Salvando estado atual para \"' + status_file + '\"')
+            if path.isdir(log_folder):
+                with open(status_file, 'w') as f:
+                    f.write(json.dumps(system_status.__dict__))
+            else:
+                mkdir(log_folder)
+                with open(status_file, 'w') as f:
+                    f.write(json.dumps(system_status.__dict__))
+            server_socket.close()
 
 if __name__ == '__main__':
     start_server()
