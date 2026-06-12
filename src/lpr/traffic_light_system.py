@@ -1,4 +1,3 @@
-from config import pins
 from gpio.gpio_controller import GPIOController
 from model.traffic_light import TrafficLight
 from time import sleep
