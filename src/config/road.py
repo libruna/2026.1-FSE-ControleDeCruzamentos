@@ -4,7 +4,7 @@ ROAD_MAP = {
         'sensor_2': 'Via auxiliar',
     },
     'cruzamento_2': {
-        'sensor_1': 'Via principal',
-        'sensor_2': 'Via auxiliar',
+        'sensor_3': 'Via principal',
+        'sensor_4': 'Via auxiliar',
     }
 }
