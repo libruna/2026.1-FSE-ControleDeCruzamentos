@@ -304,7 +304,7 @@ def log_infraction(lpq : LicensePlateQuery):
     print('[INFRACTION]: ' + inf)
 
 def log_vehicle_history(client_id, s_id):
-    print(f'\n[INFO] Registrando passagem de veículo detectada no {s_id} do {client_id}...')
+    #print(f'\n[INFO] Registrando passagem de veículo detectada no {s_id} do {client_id}...')
     intersection_name = ROAD_MAP.get(client_id, {}).get(s_id, s_id)
     
     log_entry = f'{datetime.now()} - {client_id.upper()} - {intersection_name} - Veículo detectado\n'
